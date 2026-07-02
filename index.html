@@ -120,28 +120,57 @@
 
 </div>
 
-<script>
+<script type="module">
+  import { initIndexedDB, loginWithTutanota, logoutFromTutanota } from './client.js';
+
   const loginForm = document.getElementById('login-form');
   const viewLogin = document.getElementById('view-login');
   const viewChatWrapper = document.getElementById('view-chat-wrapper');
   const syncStatus = document.getElementById('sync-status');
 
-  loginForm.addEventListener('submit', (e) => {
+  let currentEmail = null;
+
+  // Initialize IndexedDB on page load
+  await initIndexedDB();
+
+  loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('email-input').value;
+    const password = document.getElementById('password-input').value;
+    const submitBtn = loginForm.querySelector('button[type="submit"]');
 
-    viewLogin.style.display = 'none';
-    viewChatWrapper.style.display = 'flex';
+    try {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Signing in…';
 
-    syncStatus.textContent = 'Synced • ' + email.split('@')[0];
-    syncStatus.classList.add('is-synced');
+      await loginWithTutanota(email, password);
+      currentEmail = email;
+
+      viewLogin.style.display = 'none';
+      viewChatWrapper.style.display = 'flex';
+
+      syncStatus.textContent = 'Synced • ' + email.split('@')[0];
+      syncStatus.classList.add('is-synced');
+    } catch (error) {
+      alert('Login failed: ' + error.message);
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Sign In';
+    }
   });
 
-  document.getElementById('settings-btn').addEventListener('click', () => {
+  document.getElementById('settings-btn').addEventListener('click', async () => {
     if (confirm('Sign out of Tutanota?')) {
+      try {
+        await logoutFromTutanota(currentEmail);
+      } catch (error) {
+        console.error('Logout error:', error);
+      }
+
       viewChatWrapper.style.display = 'none';
       viewLogin.style.display = 'flex';
       loginForm.reset();
+      currentEmail = null;
+      syncStatus.classList.remove('is-synced');
     }
   });
 </script>
