@@ -17,6 +17,16 @@ export async function initDb() {
 
   await db.exec('PRAGMA journal_mode = WAL');
 
+  // Migrate existing tables if needed
+  const tables = await db.all(`SELECT name FROM sqlite_master WHERE type='table' AND name='tasks'`);
+  if (tables.length > 0) {
+    const columns = await db.all(`PRAGMA table_info(tasks)`);
+    const hasRecurringId = columns.some(col => col.name === 'recurring_task_id');
+    if (!hasRecurringId) {
+      await db.exec(`ALTER TABLE tasks ADD COLUMN recurring_task_id TEXT`);
+    }
+  }
+
   await db.exec(`
     CREATE TABLE IF NOT EXISTS accounts (
       id INTEGER PRIMARY KEY,

@@ -347,34 +347,33 @@ app.delete('/api/recurring-tasks/:id', async (req, res) => {
 /* ===== recurring task helpers ===== */
 
 function calculateNextDueDate(startDate, recurrenceType, recurrenceData = {}) {
-  const start = new Date(startDate);
-  const now = new Date();
+  const today = new Date().toISOString().split('T')[0];
+
+  // Parse dates as YYYY-MM-DD for comparison
+  const startStr = startDate.split('T')[0];
 
   if (recurrenceType === 'daily') {
-    const next = new Date(start);
-    while (next <= now) {
-      next.setDate(next.getDate() + 1);
+    // If start is today or earlier, next instance is today
+    if (startStr <= today) {
+      return today;
     }
-    return next.toISOString().split('T')[0];
+    return startStr;
   }
 
   if (recurrenceType === 'weekly') {
-    const next = new Date(start);
-    const dayOfWeek = next.getDay();
-    while (next <= now) {
-      next.setDate(next.getDate() + 7);
+    // If start is today or earlier, next instance is today (weekly means same day each week)
+    if (startStr <= today) {
+      return today;
     }
-    return next.toISOString().split('T')[0];
+    return startStr;
   }
 
   if (recurrenceType === 'monthly') {
-    const next = new Date(start);
-    const day = next.getDate();
-    while (next <= now) {
-      next.setMonth(next.getMonth() + 1);
-      next.setDate(Math.min(day, new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate()));
+    // If start is today or earlier, next instance is today (monthly means same date each month)
+    if (startStr <= today) {
+      return today;
     }
-    return next.toISOString().split('T')[0];
+    return startStr;
   }
 
   return startDate;
