@@ -259,6 +259,15 @@
     syncStatus.classList.remove('is-synced');
 
     try {
+      // Trigger native SMS sync on Android
+      if (window.androidSms) {
+        try {
+          window.androidSms.syncSms(currentEmail);
+        } catch (e) {
+          console.log('Native SMS sync not available');
+        }
+      }
+
       await triggerSync(currentEmail);
       await Promise.all([fetchEmails(currentEmail), fetchEvents(currentEmail), fetchMessages(currentEmail)]);
       await updateSyncStatus();
@@ -445,6 +454,15 @@
       viewChatWrapper.style.display = 'flex';
 
       syncStatus.textContent = 'Synced • ' + email.split('@')[0];
+
+      // Trigger native SMS sync on Android
+      if (window.androidSms) {
+        try {
+          window.androidSms.syncSms(email);
+        } catch (e) {
+          console.log('Native SMS sync not available (not on Android)');
+        }
+      }
 
       // Fetch and cache data
       await Promise.all([fetchEmails(email), fetchEvents(email), fetchMessages(email)]);

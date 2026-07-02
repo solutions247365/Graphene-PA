@@ -1,23 +1,40 @@
 package com.graphenepa.app;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.webkit.JavascriptInterface;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 public class MainActivity extends AppCompatActivity {
 
     private WebView webView;
+    private SmsProvider smsProvider;
     private static final String LOCAL_SERVER = "http://localhost:3000";
+    private static final int SMS_PERMISSION_CODE = 100;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        // Request SMS permission if not granted
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_SMS)
+                    != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.READ_SMS},
+                        SMS_PERMISSION_CODE);
+            }
+        }
 
         // Handle edge-to-edge display (safe areas for notches)
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
@@ -31,6 +48,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         webView = findViewById(R.id.webview);
+        smsProvider = new SmsProvider(this);
         setupWebView();
         loadApp();
     }
@@ -74,6 +92,31 @@ public class MainActivity extends AppCompatActivity {
                 return true;
             }
         });
+
+        // Add JavaScript interface for native SMS access
+        webView.addJavascriptInterface(new SmsInterface(), "androidSms");
+    }
+
+    private class SmsInterface {
+        @JavascriptInterface
+        public String getSms() {
+            return smsProvider.getSmsMessages();
+        }
+
+        @JavascriptInterface
+        public void syncSms(String email) {
+            smsProvider.syncSmsWithBackend(email, LOCAL_SERVER);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == SMS_PERMISSION_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // Permission granted, SMS access is now available
+            }
+        }
     }
 
     private void loadApp() {

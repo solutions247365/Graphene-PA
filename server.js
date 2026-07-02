@@ -240,6 +240,38 @@ app.post('/api/tasks/from-suggestion', async (req, res) => {
   }
 });
 
+/* ===== SMS sync from Android (native) ===== */
+
+app.post('/api/sms/sync', async (req, res) => {
+  try {
+    const { email, messages } = req.body;
+
+    if (!email || !Array.isArray(messages)) {
+      return res.status(400).json({ error: 'Email and messages array required' });
+    }
+
+    const db = getDb();
+
+    // Clear old messages and insert new ones
+    await db.run('DELETE FROM messages WHERE account_email = ?', [email]);
+
+    for (const msg of messages) {
+      await db.run(
+        `INSERT INTO messages
+         (id, account_email, phone_number, contact_name, body, is_incoming, sent_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [msg.id, email, msg.phone_number, msg.contact_name, msg.body, msg.is_incoming, msg.sent_at]
+      );
+    }
+
+    console.log(`[SMS Sync] Synced ${messages.length} messages for ${email}`);
+    res.json({ success: true, count: messages.length });
+  } catch (error) {
+    console.error('SMS sync error:', error);
+    res.status(500).json({ error: 'Failed to sync SMS' });
+  }
+});
+
 /* ===== sync route ===== */
 
 app.post('/api/sync', async (req, res) => {
