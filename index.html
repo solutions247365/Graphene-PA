@@ -62,9 +62,14 @@
           <span class="sync-status" id="sync-status">Syncing…</span>
         </div>
       </div>
-      <button class="icon-btn" type="button" aria-label="Settings" id="settings-btn">
-        <svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M19.4 13a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V19a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 13a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 6.6a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 2.6a1.7 1.7 0 0 0 1-1.55V1a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 8a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1Z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
-      </button>
+      <div class="header-actions">
+        <button class="icon-btn" type="button" aria-label="Refresh sync" id="sync-btn">
+          <svg viewBox="0 0 24 24" width="20" height="20"><path d="M4 12a8 8 0 0 1 13-6m0 12a8 8 0 0 1-13-6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="m18 5-2-2m0 0-2 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="icon-btn" type="button" aria-label="Settings" id="settings-btn">
+          <svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M19.4 13a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V19a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 13a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 6.6a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 2.6a1.7 1.7 0 0 0 1-1.55V1a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 8a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1Z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
     </header>
 
     <main class="view" id="view-chat">
@@ -121,17 +126,54 @@
 </div>
 
 <script type="module">
-  import { initIndexedDB, loginWithTutanota, logoutFromTutanota } from './client.js';
+  import { initIndexedDB, loginWithTutanota, logoutFromTutanota, fetchEmails, fetchEvents, getCachedEmails, getCachedEvents, triggerSync } from './client.js';
 
   const loginForm = document.getElementById('login-form');
   const viewLogin = document.getElementById('view-login');
   const viewChatWrapper = document.getElementById('view-chat-wrapper');
   const syncStatus = document.getElementById('sync-status');
+  const syncBtn = document.getElementById('sync-btn');
 
   let currentEmail = null;
+  let isSyncing = false;
 
   // Initialize IndexedDB on page load
   await initIndexedDB();
+
+  async function updateSyncStatus() {
+    try {
+      const [emails, events] = await Promise.all([getCachedEmails(), getCachedEvents()]);
+      const emailCount = emails.length;
+      const eventCount = events.length;
+
+      const username = currentEmail.split('@')[0];
+      syncStatus.textContent = `Synced • ${username} • ${emailCount} emails, ${eventCount} events`;
+      syncStatus.classList.add('is-synced');
+    } catch (error) {
+      console.error('Error updating sync status:', error);
+    }
+  }
+
+  async function performSync() {
+    if (isSyncing || !currentEmail) return;
+
+    isSyncing = true;
+    syncBtn.disabled = true;
+    syncStatus.textContent = 'Syncing…';
+    syncStatus.classList.remove('is-synced');
+
+    try {
+      await triggerSync(currentEmail);
+      await Promise.all([fetchEmails(currentEmail), fetchEvents(currentEmail)]);
+      await updateSyncStatus();
+    } catch (error) {
+      console.error('Sync error:', error);
+      syncStatus.textContent = 'Sync failed';
+    } finally {
+      isSyncing = false;
+      syncBtn.disabled = false;
+    }
+  }
 
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -150,13 +192,18 @@
       viewChatWrapper.style.display = 'flex';
 
       syncStatus.textContent = 'Synced • ' + email.split('@')[0];
-      syncStatus.classList.add('is-synced');
+
+      // Fetch and cache data
+      await Promise.all([fetchEmails(email), fetchEvents(email)]);
+      await updateSyncStatus();
     } catch (error) {
       alert('Login failed: ' + error.message);
       submitBtn.disabled = false;
       submitBtn.textContent = 'Sign In';
     }
   });
+
+  syncBtn.addEventListener('click', performSync);
 
   document.getElementById('settings-btn').addEventListener('click', async () => {
     if (confirm('Sign out of Tutanota?')) {

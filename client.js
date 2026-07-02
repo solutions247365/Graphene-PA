@@ -125,3 +125,17 @@ export async function getCachedEvents() {
     request.onsuccess = () => resolve(request.result);
   });
 }
+
+export async function triggerSync(email) {
+  const res = await fetch(`${API_BASE}/api/sync`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+
+  if (!res.ok) {
+    throw new Error('Sync failed');
+  }
+
+  return res.json();
+}
