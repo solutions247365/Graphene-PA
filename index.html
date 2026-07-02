@@ -249,6 +249,9 @@
       </div>
     </div>
 
+    <!-- Notification Toast -->
+    <div class="notification-container" id="notification-container"></div>
+
     <nav class="tab-bar" aria-label="Primary">
       <button class="tab-btn is-active" type="button" data-view="view-chat">
         <svg viewBox="0 0 24 24" width="22" height="22"><path d="M4 5h16v11H8l-4 4V5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
@@ -257,10 +260,12 @@
       <button class="tab-btn" type="button" data-view="view-tasks">
         <svg viewBox="0 0 24 24" width="22" height="22"><path d="m4 12 4 4 12-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span>Tasks</span>
+        <span class="tab-badge" id="tasks-badge" style="display: none;">0</span>
       </button>
       <button class="tab-btn" type="button" data-view="view-messages">
         <svg viewBox="0 0 24 24" width="22" height="22"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
         <span>Messages</span>
+        <span class="tab-badge" id="messages-badge" style="display: none;">0</span>
       </button>
       <button class="tab-btn" type="button" data-view="view-schedule">
         <svg viewBox="0 0 24 24" width="22" height="22"><rect x="3" y="4" width="18" height="17" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 9h18M8 2v4M16 2v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
@@ -360,6 +365,7 @@
       await triggerSync(currentEmail);
       await Promise.all([fetchEmails(currentEmail), fetchEvents(currentEmail), fetchMessages(currentEmail)]);
       await updateSyncStatus();
+      await checkNotifications();
     } catch (error) {
       console.error('Sync error:', error);
       syncStatus.textContent = 'Sync failed';
@@ -567,6 +573,9 @@
         fetchTasks(email),
       ]);
       await updateSyncStatus();
+
+      // Check for notifications
+      await checkNotifications();
     } catch (error) {
       alert('Login failed: ' + error.message);
       submitBtn.disabled = false;
@@ -593,6 +602,140 @@
   });
 
   document.getElementById('manual-sync-btn').addEventListener('click', performSync);
+
+  // Notification system
+  function showNotification(title, message, type = 'info') {
+    const container = document.getElementById('notification-container');
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+
+    const icons = {
+      success: '✓',
+      warning: '⚠',
+      info: 'ℹ',
+    };
+
+    notification.innerHTML = `
+      <div class="notification-icon">${icons[type]}</div>
+      <div class="notification-content">
+        <div class="notification-title">${title}</div>
+        <div class="notification-message">${message}</div>
+      </div>
+      <button class="notification-close" aria-label="Close">×</button>
+    `;
+
+    const closeBtn = notification.querySelector('.notification-close');
+    closeBtn.addEventListener('click', () => {
+      notification.remove();
+    });
+
+    container.appendChild(notification);
+
+    // Auto-dismiss after 4 seconds
+    setTimeout(() => {
+      if (notification.parentElement) {
+        notification.remove();
+      }
+    }, 4000);
+
+    // Native Android notification
+    if (window.androidSms?.showNotification) {
+      try {
+        window.androidSms.showNotification(title, message);
+      } catch (e) {
+        console.log('Native notifications not available');
+      }
+    }
+  }
+
+  async function checkNotifications() {
+    if (!currentEmail) return;
+
+    try {
+      const [tasks, messages] = await Promise.all([
+        getCachedTasks(),
+        getCachedMessages(),
+      ]);
+
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+
+      // Check for tasks due today or tomorrow
+      const upcomingTasks = tasks.filter((task) => {
+        if (task.is_completed || !task.due_date) return false;
+        const dueDate = new Date(task.due_date);
+        const dueDateNormalized = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+        return dueDateNormalized >= today && dueDateNormalized <= tomorrow;
+      });
+
+      // Check for recent messages (last 2 hours)
+      const recentMessages = messages.filter((msg) => {
+        const msgTime = new Date(msg.sent_at);
+        return now - msgTime < 2 * 60 * 60 * 1000;
+      });
+
+      // Update badge counts
+      const tasksBadge = document.getElementById('tasks-badge');
+      const messagesBadge = document.getElementById('messages-badge');
+
+      if (upcomingTasks.length > 0) {
+        tasksBadge.textContent = Math.min(upcomingTasks.length, 9);
+        tasksBadge.style.display = 'flex';
+      } else {
+        tasksBadge.style.display = 'none';
+      }
+
+      if (recentMessages.length > 0) {
+        messagesBadge.textContent = Math.min(recentMessages.length, 9);
+        messagesBadge.style.display = 'flex';
+      } else {
+        messagesBadge.style.display = 'none';
+      }
+
+      // Show notification for first upcoming task
+      if (upcomingTasks.length > 0) {
+        const task = upcomingTasks[0];
+        const dueDate = new Date(task.due_date);
+        const isToday = dueDate <= tomorrow && dueDate > today;
+        const dueDateStr = isToday ? 'Today' : 'Tomorrow';
+        showNotification('Task due ' + dueDateStr, task.title, 'warning');
+      }
+
+      // Show notification for new messages
+      if (recentMessages.length > 0) {
+        const latestMsg = recentMessages[recentMessages.length - 1];
+        const preview = latestMsg.body.length > 40 ? latestMsg.body.substring(0, 40) + '…' : latestMsg.body;
+        showNotification('Message from ' + (latestMsg.contact_name || latestMsg.phone_number), preview, 'info');
+      }
+    } catch (error) {
+      console.error('Error checking notifications:', error);
+    }
+  }
+
+  // Check notifications on login
+  const originalLoginHandler = loginForm.addEventListener('submit', async (e) => {
+    const handler = loginForm.onsubmit;
+    if (!handler) return;
+  });
+
+  let lastNotificationCheck = 0;
+  async function periodicNotificationCheck() {
+    const now = Date.now();
+    // Check every 5 minutes
+    if (now - lastNotificationCheck > 5 * 60 * 1000) {
+      await checkNotifications();
+      lastNotificationCheck = now;
+    }
+  }
+
+  // Check notifications after each view update
+  const originalUpdateTasksView = updateTasksView;
+  updateTasksView = async function() {
+    const result = await originalUpdateTasksView.call(this);
+    await periodicNotificationCheck();
+    return result;
+  };
 
   // Task management handlers
   window.handleTaskToggle = async (taskId, isCompleted) => {
