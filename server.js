@@ -344,6 +344,121 @@ app.delete('/api/recurring-tasks/:id', async (req, res) => {
   }
 });
 
+/* ===== task template routes ===== */
+
+app.get('/api/task-templates', async (req, res) => {
+  try {
+    const { email } = req.query;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email query parameter required' });
+    }
+
+    const db = getDb();
+    const templates = await db.all(
+      `SELECT id, title, description, due_date_offset, is_recurring, recurrence_type, category, created_at
+       FROM task_templates
+       WHERE account_email = ?
+       ORDER BY category, title`,
+      [email]
+    );
+
+    res.json({ templates });
+  } catch (error) {
+    console.error('Fetch task templates error:', error);
+    res.status(500).json({ error: 'Failed to fetch task templates' });
+  }
+});
+
+app.post('/api/task-templates', async (req, res) => {
+  try {
+    const { email, title, description, due_date_offset, is_recurring, recurrence_type, category } = req.body;
+
+    if (!email || !title) {
+      return res.status(400).json({ error: 'Email and title required' });
+    }
+
+    const db = getDb();
+    const templateId = crypto.randomUUID();
+
+    await db.run(
+      `INSERT INTO task_templates (id, account_email, title, description, due_date_offset, is_recurring, recurrence_type, category)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [templateId, email, title, description || null, due_date_offset || 0, is_recurring ? 1 : 0, recurrence_type || null, category || 'General']
+    );
+
+    res.json({ success: true, template_id: templateId });
+  } catch (error) {
+    console.error('Create task template error:', error);
+    res.status(500).json({ error: 'Failed to create task template' });
+  }
+});
+
+app.delete('/api/task-templates/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const db = getDb();
+
+    await db.run('DELETE FROM task_templates WHERE id = ?', [id]);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete task template error:', error);
+    res.status(500).json({ error: 'Failed to delete task template' });
+  }
+});
+
+app.post('/api/task-templates/:id/use', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email required' });
+    }
+
+    const db = getDb();
+    const template = await db.get('SELECT * FROM task_templates WHERE id = ? AND account_email = ?', [id, email]);
+
+    if (!template) {
+      return res.status(404).json({ error: 'Template not found' });
+    }
+
+    const today = new Date();
+    const dueDate = new Date(today.getTime() + (template.due_date_offset || 0) * 24 * 60 * 60 * 1000);
+    const dueDateStr = dueDate.toISOString().split('T')[0];
+
+    // Create task from template
+    if (template.is_recurring) {
+      // Create recurring task
+      const taskId = crypto.randomUUID();
+      const nextDueDate = calculateNextDueDate(dueDateStr, template.recurrence_type, {});
+
+      await db.run(
+        `INSERT INTO recurring_tasks (id, account_email, title, description, recurrence_type, start_date, next_due_date, is_active)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
+        [taskId, email, template.title, template.description, template.recurrence_type, dueDateStr, nextDueDate]
+      );
+
+      res.json({ success: true, task_id: taskId, type: 'recurring' });
+    } else {
+      // Create single task
+      const taskId = crypto.randomUUID();
+
+      await db.run(
+        `INSERT INTO tasks (id, account_email, title, description, due_date)
+         VALUES (?, ?, ?, ?, ?)`,
+        [taskId, email, template.title, template.description, dueDateStr]
+      );
+
+      res.json({ success: true, task_id: taskId, type: 'single' });
+    }
+  } catch (error) {
+    console.error('Use task template error:', error);
+    res.status(500).json({ error: 'Failed to use task template' });
+  }
+});
+
 /* ===== recurring task helpers ===== */
 
 function calculateNextDueDate(startDate, recurrenceType, recurrenceData = {}) {

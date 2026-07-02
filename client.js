@@ -358,3 +358,61 @@ export async function deleteRecurringTask(taskId) {
 
   return res.json();
 }
+
+export async function getTaskTemplates(email) {
+  const res = await fetch(`${API_BASE}/api/task-templates?email=${encodeURIComponent(email)}`);
+
+  if (!res.ok) {
+    throw new Error('Failed to fetch task templates');
+  }
+
+  return res.json();
+}
+
+export async function createTaskTemplate(email, title, description, dueDateOffset, isRecurring, recurrenceType, category) {
+  const res = await fetch(`${API_BASE}/api/task-templates`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email,
+      title,
+      description,
+      due_date_offset: dueDateOffset,
+      is_recurring: isRecurring,
+      recurrence_type: recurrenceType,
+      category,
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error('Failed to create task template');
+  }
+
+  return res.json();
+}
+
+export async function deleteTaskTemplate(templateId) {
+  const res = await fetch(`${API_BASE}/api/task-templates/${templateId}`, {
+    method: 'DELETE',
+  });
+
+  if (!res.ok) {
+    throw new Error('Failed to delete task template');
+  }
+
+  return res.json();
+}
+
+export async function useTaskTemplate(email, templateId) {
+  const res = await fetch(`${API_BASE}/api/task-templates/${templateId}/use`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+
+  if (!res.ok) {
+    throw new Error('Failed to use task template');
+  }
+
+  return res.json();
+}

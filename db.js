@@ -103,12 +103,27 @@ export async function initDb() {
       FOREIGN KEY (account_email) REFERENCES accounts(email)
     );
 
+    CREATE TABLE IF NOT EXISTS task_templates (
+      id TEXT PRIMARY KEY,
+      account_email TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT,
+      due_date_offset INTEGER,
+      is_recurring BOOLEAN DEFAULT 0,
+      recurrence_type TEXT,
+      recurrence_data TEXT,
+      category TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (account_email) REFERENCES accounts(email)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_emails_account ON emails(account_email);
     CREATE INDEX IF NOT EXISTS idx_events_account ON events(account_email);
     CREATE INDEX IF NOT EXISTS idx_messages_account ON messages(account_email);
     CREATE INDEX IF NOT EXISTS idx_tasks_account ON tasks(account_email);
     CREATE INDEX IF NOT EXISTS idx_recurring_tasks_account ON recurring_tasks(account_email);
     CREATE INDEX IF NOT EXISTS idx_tasks_recurring ON tasks(recurring_task_id);
+    CREATE INDEX IF NOT EXISTS idx_task_templates_account ON task_templates(account_email);
   `);
 
   return db;

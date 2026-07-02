@@ -1182,6 +1182,79 @@ svg {
   -webkit-box-orient: vertical;
 }
 
+/* ---- templates ---------------------------------------------------------------- */
+
+.templates-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: var(--space-2);
+}
+
+.template-item {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.template-item:active {
+  background: var(--color-border);
+  transform: scale(0.98);
+}
+
+.template-title {
+  font-weight: 500;
+  font-size: 13px;
+  color: var(--color-text);
+  word-wrap: break-word;
+}
+
+.template-category {
+  font-size: 11px;
+  color: var(--color-text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.template-actions {
+  display: flex;
+  gap: var(--space-1);
+  margin-top: auto;
+}
+
+.template-use-btn,
+.template-delete-btn {
+  flex: 1;
+  background: none;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.template-use-btn {
+  background: var(--color-accent);
+  color: var(--color-accent-contrast);
+  border-color: var(--color-accent);
+}
+
+.template-use-btn:active {
+  background: var(--color-accent-strong);
+}
+
+.template-delete-btn:active {
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+}
+
 /* ---- notifications ---------------------------------------------------------- */
 
 .notification-container {

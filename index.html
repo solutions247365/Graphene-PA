@@ -129,6 +129,32 @@
             <button type="submit" class="btn btn-primary">Create Recurring Task</button>
           </form>
         </div>
+
+        <div class="task-section">
+          <h3>Task Templates</h3>
+          <div id="templates-list" class="templates-list"></div>
+          <button type="button" class="btn btn-secondary" id="toggle-template-form" style="width: 100%; margin-top: var(--space-3);">+ Create Template</button>
+          <form id="template-form" class="task-form" style="display: none; margin-top: var(--space-3);">
+            <input type="text" id="template-title" placeholder="Template title" required />
+            <textarea id="template-desc" placeholder="Description (optional)" rows="2"></textarea>
+            <input type="number" id="template-offset" placeholder="Days until due (0 = today)" value="0" />
+            <input type="text" id="template-category" placeholder="Category (e.g., Work, Personal)" />
+            <label class="checkbox-label">
+              <input type="checkbox" id="template-recurring" />
+              <span>Recurring task</span>
+            </label>
+            <select id="template-recurrence" style="display: none;">
+              <option value="">Select recurrence</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+            <div style="display: flex; gap: var(--space-2);">
+              <button type="submit" class="btn btn-primary" style="flex: 1;">Save Template</button>
+              <button type="button" class="btn btn-tertiary" id="cancel-template-form" style="flex: 1;">Cancel</button>
+            </div>
+          </form>
+        </div>
       </div>
     </main>
 
@@ -344,7 +370,7 @@
 </div>
 
 <script type="module">
-  import { initIndexedDB, loginWithTutanota, logoutFromTutanota, fetchEmails, fetchEvents, getCachedEmails, getCachedEvents, triggerSync, fetchMessages, getCachedMessages, fetchTasks, fetchTaskSuggestions, createNewTask, acceptTaskSuggestion, updateTask, deleteTask, createRecurringTask, getRecurringTasks } from './client.js';
+  import { initIndexedDB, loginWithTutanota, logoutFromTutanota, fetchEmails, fetchEvents, getCachedEmails, getCachedEvents, triggerSync, fetchMessages, getCachedMessages, fetchTasks, fetchTaskSuggestions, createNewTask, acceptTaskSuggestion, updateTask, deleteTask, createRecurringTask, getRecurringTasks, getTaskTemplates, createTaskTemplate, deleteTaskTemplate, useTaskTemplate } from './client.js';
 
   const loginForm = document.getElementById('login-form');
   const viewLogin = document.getElementById('view-login');
@@ -1100,12 +1126,110 @@
     }
   });
 
-  // Patch updateTasksView to store suggestions globally for handlers
+  // Task template form
+  const templateForm = document.getElementById('template-form');
+  const toggleTemplateBtn = document.getElementById('toggle-template-form');
+  const cancelTemplateBtn = document.getElementById('cancel-template-form');
+  const templateRecurringCheckbox = document.getElementById('template-recurring');
+  const templateRecurrenceSelect = document.getElementById('template-recurrence');
+
+  toggleTemplateBtn.addEventListener('click', () => {
+    templateForm.style.display = templateForm.style.display === 'none' ? 'flex' : 'none';
+    toggleTemplateBtn.style.display = templateForm.style.display === 'none' ? 'block' : 'none';
+  });
+
+  cancelTemplateBtn.addEventListener('click', () => {
+    templateForm.style.display = 'none';
+    toggleTemplateBtn.style.display = 'block';
+    templateForm.reset();
+  });
+
+  templateRecurringCheckbox.addEventListener('change', () => {
+    templateRecurrenceSelect.style.display = templateRecurringCheckbox.checked ? 'block' : 'none';
+  });
+
+  templateForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const title = document.getElementById('template-title').value;
+    const desc = document.getElementById('template-desc').value;
+    const offset = parseInt(document.getElementById('template-offset').value) || 0;
+    const category = document.getElementById('template-category').value;
+    const isRecurring = templateRecurringCheckbox.checked;
+    const recurrenceType = isRecurring ? templateRecurrenceSelect.value : null;
+
+    try {
+      await createTaskTemplate(currentEmail, title, desc, offset, isRecurring, recurrenceType, category);
+      templateForm.reset();
+      templateForm.style.display = 'none';
+      toggleTemplateBtn.style.display = 'block';
+      showNotification('Template saved', title, 'success');
+      await updateTasksView();
+    } catch (error) {
+      console.error('Error creating template:', error);
+      alert('Failed to create template');
+    }
+  });
+
+  window.handleUseTemplate = async (templateId) => {
+    try {
+      const result = await useTaskTemplate(currentEmail, templateId);
+      const type = result.type === 'recurring' ? 'Recurring task' : 'Task';
+      showNotification(`${type} created from template`, '', 'success');
+      await updateTasksView();
+    } catch (error) {
+      console.error('Error using template:', error);
+      alert('Failed to use template');
+    }
+  };
+
+  window.handleDeleteTemplate = async (templateId) => {
+    if (!confirm('Delete this template?')) return;
+    try {
+      await deleteTaskTemplate(templateId);
+      await updateTasksView();
+    } catch (error) {
+      console.error('Error deleting template:', error);
+      alert('Failed to delete template');
+    }
+  };
+
+  async function updateTemplatesList() {
+    const templatesList = document.getElementById('templates-list');
+    try {
+      const { templates } = await getTaskTemplates(currentEmail);
+
+      if (templates.length === 0) {
+        templatesList.innerHTML = '';
+        return;
+      }
+
+      templatesList.innerHTML = templates
+        .map((template) => {
+          return `
+            <div class="template-item">
+              <div class="template-title">${template.title}</div>
+              <div class="template-category">${template.category}</div>
+              <div class="template-actions">
+                <button type="button" class="template-use-btn" onclick="handleUseTemplate('${template.id}')">Use</button>
+                <button type="button" class="template-delete-btn" onclick="handleDeleteTemplate('${template.id}')">×</button>
+              </div>
+            </div>
+          `;
+        })
+        .join('');
+    } catch (error) {
+      console.error('Error loading templates:', error);
+    }
+  }
+
+  // Patch updateTasksView to store suggestions globally for handlers and load templates
   const originalUpdateTasksView = updateTasksView;
   updateTasksView = async function() {
     const suggestionsRes = await fetchTaskSuggestions(currentEmail);
     currentSuggestions = suggestionsRes.suggestions || [];
-    return originalUpdateTasksView.call(this);
+    const result = await originalUpdateTasksView.call(this);
+    await updateTemplatesList();
+    return result;
   };
 </script>
 </body>
