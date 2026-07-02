@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { initDb, getDb } from './db.js';
 import { encryptPassword, decryptPassword } from './crypto.js';
+import { authenticateWithTutanota, fetchEmailsFromTutanota, fetchEventsFromTutanota } from './tutanota.js';
 
 dotenv.config();
 
@@ -43,8 +44,10 @@ app.post('/api/auth/login', async (req, res) => {
       );
     }
 
-    // Trigger background sync
-    syncWithTutanota(email).catch(console.error);
+    // Trigger background sync (don't wait for it)
+    syncWithTutanota(email, password)
+      .then(() => console.log(`[Login] Sync completed for ${email}`))
+      .catch((err) => console.error(`[Login] Sync failed for ${email}:`, err.message));
 
     res.json({ success: true, email });
   } catch (error) {
@@ -123,13 +126,22 @@ app.get('/api/events', async (req, res) => {
 
 app.post('/api/sync', async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, password } = req.body;
 
     if (!email) {
       return res.status(400).json({ error: 'Email required' });
     }
 
-    await syncWithTutanota(email);
+    const db = getDb();
+    const account = await db.get('SELECT encrypted_password FROM accounts WHERE email = ?', [email]);
+
+    if (!account) {
+      return res.status(404).json({ error: 'Account not found' });
+    }
+
+    const decryptedPassword = password || decryptPassword(account.encrypted_password);
+
+    await syncWithTutanota(email, decryptedPassword);
     res.json({ success: true, synced: true });
   } catch (error) {
     console.error('Sync error:', error);
@@ -137,25 +149,32 @@ app.post('/api/sync', async (req, res) => {
   }
 });
 
-/* ===== sync logic (placeholder) ===== */
+/* ===== sync logic ===== */
 
-async function syncWithTutanota(email) {
+async function syncWithTutanota(email, password) {
   const db = getDb();
 
   const account = await db.get('SELECT * FROM accounts WHERE email = ?', [email]);
   if (!account) throw new Error('Account not found');
 
-  // TODO: Integrate actual Tutanota SDK here
-  // For now, this is a placeholder that will be populated with real sync logic
+  try {
+    // Authenticate with Tutanota
+    await authenticateWithTutanota(email, password);
 
-  console.log(`[Sync] Fetching emails and events for ${email}...`);
+    // Fetch emails and events
+    await Promise.all([
+      fetchEmailsFromTutanota(email),
+      fetchEventsFromTutanota(email),
+    ]);
 
-  // Placeholder: in production, call Tutanota API to fetch emails/events
-  // Then store them in the database
+    // Update sync timestamp
+    await db.run('UPDATE accounts SET synced_at = CURRENT_TIMESTAMP WHERE email = ?', [email]);
 
-  await db.run('UPDATE accounts SET synced_at = CURRENT_TIMESTAMP WHERE email = ?', [email]);
-
-  console.log(`[Sync] Complete for ${email}`);
+    console.log(`[Sync] Complete for ${email}`);
+  } catch (error) {
+    console.error(`[Sync] Error for ${email}:`, error.message);
+    throw error;
+  }
 }
 
 app.listen(PORT, () => {
