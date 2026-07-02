@@ -176,3 +176,77 @@ export async function getCachedMessages() {
     request.onsuccess = () => resolve(request.result);
   });
 }
+
+export async function fetchTasks(email) {
+  const res = await fetch(`${API_BASE}/api/tasks?email=${encodeURIComponent(email)}`);
+
+  if (!res.ok) {
+    throw new Error('Failed to fetch tasks');
+  }
+
+  return res.json();
+}
+
+export async function fetchTaskSuggestions(email) {
+  const res = await fetch(`${API_BASE}/api/tasks/suggestions?email=${encodeURIComponent(email)}`);
+
+  if (!res.ok) {
+    throw new Error('Failed to fetch task suggestions');
+  }
+
+  return res.json();
+}
+
+export async function createNewTask(email, title, description, dueDate) {
+  const res = await fetch(`${API_BASE}/api/tasks`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, title, description, due_date: dueDate }),
+  });
+
+  if (!res.ok) {
+    throw new Error('Failed to create task');
+  }
+
+  return res.json();
+}
+
+export async function acceptTaskSuggestion(email, suggestion) {
+  const res = await fetch(`${API_BASE}/api/tasks/from-suggestion`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, suggestion }),
+  });
+
+  if (!res.ok) {
+    throw new Error('Failed to accept suggestion');
+  }
+
+  return res.json();
+}
+
+export async function updateTask(taskId, updates) {
+  const res = await fetch(`${API_BASE}/api/tasks/${taskId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  });
+
+  if (!res.ok) {
+    throw new Error('Failed to update task');
+  }
+
+  return res.json();
+}
+
+export async function deleteTask(taskId) {
+  const res = await fetch(`${API_BASE}/api/tasks/${taskId}`, {
+    method: 'DELETE',
+  });
+
+  if (!res.ok) {
+    throw new Error('Failed to delete task');
+  }
+
+  return res.json();
+}

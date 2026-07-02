@@ -92,7 +92,27 @@
     </main>
 
     <main class="view" id="view-tasks" style="display: none;">
-      <div class="items-list" id="tasks-list"></div>
+      <div class="tasks-container">
+        <div class="task-section">
+          <h3>My Tasks</h3>
+          <div id="tasks-list" class="tasks-list"></div>
+        </div>
+
+        <div class="task-section">
+          <h3>Suggested from Your Data</h3>
+          <div id="suggestions-list" class="suggestions-list"></div>
+        </div>
+
+        <div class="task-section">
+          <h3>Create New Task</h3>
+          <form id="new-task-form" class="task-form">
+            <input type="text" id="task-title" placeholder="Task title" required />
+            <textarea id="task-desc" placeholder="Description (optional)" rows="2"></textarea>
+            <input type="date" id="task-date" />
+            <button type="submit" class="btn btn-primary">Add Task</button>
+          </form>
+        </div>
+      </div>
     </main>
 
     <main class="view" id="view-messages" style="display: none;">
@@ -167,7 +187,7 @@
 </div>
 
 <script type="module">
-  import { initIndexedDB, loginWithTutanota, logoutFromTutanota, fetchEmails, fetchEvents, getCachedEmails, getCachedEvents, triggerSync, fetchMessages, getCachedMessages } from './client.js';
+  import { initIndexedDB, loginWithTutanota, logoutFromTutanota, fetchEmails, fetchEvents, getCachedEmails, getCachedEvents, triggerSync, fetchMessages, getCachedMessages, fetchTasks, fetchTaskSuggestions, createNewTask, acceptTaskSuggestion, updateTask, deleteTask } from './client.js';
 
   const loginForm = document.getElementById('login-form');
   const viewLogin = document.getElementById('view-login');
@@ -252,34 +272,70 @@
   }
 
   async function updateTasksView() {
-    const tasksList = document.getElementById('tasks-list');
-    const events = await getCachedEvents();
-    const now = new Date();
+    try {
+      const [tasksRes, suggestionsRes] = await Promise.all([
+        fetchTasks(currentEmail),
+        fetchTaskSuggestions(currentEmail),
+      ]);
 
-    // Filter to today and upcoming
-    const todayEvents = events
-      .filter((e) => new Date(e.start_time) >= now)
-      .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
-      .slice(0, 10);
+      const tasks = tasksRes.tasks || [];
+      const suggestions = suggestionsRes.suggestions || [];
 
-    if (todayEvents.length === 0) {
-      tasksList.innerHTML = '<div style="padding: var(--space-5); text-align: center; color: var(--color-text-faint);">No upcoming tasks</div>';
-      return;
+      // Render user tasks
+      const tasksList = document.getElementById('tasks-list');
+      if (tasks.length === 0) {
+        tasksList.innerHTML = '<div style="padding: var(--space-3); text-align: center; color: var(--color-text-faint); font-size: 12px;">No tasks yet</div>';
+      } else {
+        tasksList.innerHTML = tasks
+          .map((task) => {
+            const dueDate = task.due_date
+              ? new Date(task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+              : null;
+            return `
+              <div class="task-item ${task.is_completed ? 'completed' : ''}">
+                <input type="checkbox" class="task-checkbox" ${task.is_completed ? 'checked' : ''}
+                  onchange="handleTaskToggle('${task.id}', this.checked)">
+                <div class="task-content">
+                  <div class="task-title">${task.title}</div>
+                  ${task.description ? `<div class="task-desc">${task.description}</div>` : ''}
+                  ${dueDate ? `<div class="task-date">Due ${dueDate}</div>` : ''}
+                </div>
+                <div class="task-actions">
+                  <button class="task-delete" onclick="handleTaskDelete('${task.id}')">×</button>
+                </div>
+              </div>
+            `;
+          })
+          .join('');
+      }
+
+      // Render suggestions
+      const suggestionsList = document.getElementById('suggestions-list');
+      if (suggestions.length === 0) {
+        suggestionsList.innerHTML = '<div style="padding: var(--space-3); text-align: center; color: var(--color-text-faint); font-size: 12px;">No suggestions based on your emails, texts, or calendar</div>';
+      } else {
+        suggestionsList.innerHTML = suggestions
+          .map((sugg, idx) => {
+            const dueDate = sugg.due_date
+              ? new Date(sugg.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+              : null;
+            return `
+              <div class="suggestion-item">
+                <div class="suggestion-title">${sugg.title}</div>
+                <div class="suggestion-context">${sugg.description}</div>
+                <div class="suggestion-actions">
+                  <button class="suggestion-accept" onclick="handleAcceptSuggestion(${idx})">Add Task</button>
+                  <button class="suggestion-dismiss" onclick="handleDismissSuggestion(${idx})">Dismiss</button>
+                </div>
+              </div>
+            `;
+          })
+          .join('');
+      }
+    } catch (error) {
+      console.error('Error updating tasks:', error);
+      document.getElementById('tasks-list').innerHTML = '<div style="color: var(--color-text-faint);">Error loading tasks</div>';
     }
-
-    tasksList.innerHTML = todayEvents
-      .map((e) => {
-        const start = new Date(e.start_time);
-        const time = start.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-        return `
-          <div class="item">
-            <div class="item-title">${e.title}</div>
-            <div class="item-subtitle">${e.description || 'Calendar event'}</div>
-            <div class="item-time">${time}</div>
-          </div>
-        `;
-      })
-      .join('');
   }
 
   async function updateScheduleView() {
@@ -419,6 +475,69 @@
   });
 
   document.getElementById('manual-sync-btn').addEventListener('click', performSync);
+
+  // Task management handlers
+  window.handleTaskToggle = async (taskId, isCompleted) => {
+    try {
+      await updateTask(taskId, { is_completed: isCompleted });
+      await updateTasksView();
+    } catch (error) {
+      console.error('Error toggling task:', error);
+    }
+  };
+
+  window.handleTaskDelete = async (taskId) => {
+    if (!confirm('Delete this task?')) return;
+    try {
+      await deleteTask(taskId);
+      await updateTasksView();
+    } catch (error) {
+      console.error('Error deleting task:', error);
+    }
+  };
+
+  let currentSuggestions = [];
+  window.handleAcceptSuggestion = async (idx) => {
+    if (!currentSuggestions[idx]) return;
+    try {
+      await acceptTaskSuggestion(currentEmail, currentSuggestions[idx]);
+      currentSuggestions.splice(idx, 1);
+      await updateTasksView();
+    } catch (error) {
+      console.error('Error accepting suggestion:', error);
+    }
+  };
+
+  window.handleDismissSuggestion = (idx) => {
+    if (!currentSuggestions[idx]) return;
+    currentSuggestions.splice(idx, 1);
+    updateTasksView();
+  };
+
+  // New task form
+  document.getElementById('new-task-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const title = document.getElementById('task-title').value;
+    const desc = document.getElementById('task-desc').value;
+    const date = document.getElementById('task-date').value;
+
+    try {
+      await createNewTask(currentEmail, title, desc, date);
+      document.getElementById('new-task-form').reset();
+      await updateTasksView();
+    } catch (error) {
+      console.error('Error creating task:', error);
+      alert('Failed to create task');
+    }
+  });
+
+  // Patch updateTasksView to store suggestions globally for handlers
+  const originalUpdateTasksView = updateTasksView;
+  updateTasksView = async function() {
+    const suggestionsRes = await fetchTaskSuggestions(currentEmail);
+    currentSuggestions = suggestionsRes.suggestions || [];
+    return originalUpdateTasksView.call(this);
+  };
 </script>
 </body>
 </html>

@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { initDb, getDb } from './db.js';
 import { encryptPassword, decryptPassword } from './crypto.js';
 import { authenticateWithTutanota, fetchEmailsFromTutanota, fetchEventsFromTutanota, fetchMessagesFromTutanota } from './tutanota.js';
+import { extractTasksFromData, createTaskFromSuggestion, createTask, updateTask, deleteTask, getTasksForEmail } from './task-extraction.js';
 
 dotenv.config();
 
@@ -146,6 +147,96 @@ app.get('/api/messages', async (req, res) => {
   } catch (error) {
     console.error('Fetch messages error:', error);
     res.status(500).json({ error: 'Failed to fetch messages' });
+  }
+});
+
+/* ===== task routes ===== */
+
+app.get('/api/tasks', async (req, res) => {
+  try {
+    const { email } = req.query;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email query parameter required' });
+    }
+
+    const tasks = await getTasksForEmail(email);
+    res.json({ tasks });
+  } catch (error) {
+    console.error('Fetch tasks error:', error);
+    res.status(500).json({ error: 'Failed to fetch tasks' });
+  }
+});
+
+app.post('/api/tasks', async (req, res) => {
+  try {
+    const { email, title, description, due_date } = req.body;
+
+    if (!email || !title) {
+      return res.status(400).json({ error: 'Email and title required' });
+    }
+
+    const taskId = await createTask(email, title, description || null, due_date || null);
+    res.json({ success: true, task_id: taskId });
+  } catch (error) {
+    console.error('Create task error:', error);
+    res.status(500).json({ error: 'Failed to create task' });
+  }
+});
+
+app.put('/api/tasks/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    await updateTask(id, updates);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Update task error:', error);
+    res.status(500).json({ error: 'Failed to update task' });
+  }
+});
+
+app.delete('/api/tasks/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await deleteTask(id);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete task error:', error);
+    res.status(500).json({ error: 'Failed to delete task' });
+  }
+});
+
+app.get('/api/tasks/suggestions', async (req, res) => {
+  try {
+    const { email } = req.query;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email query parameter required' });
+    }
+
+    const suggestions = await extractTasksFromData(email);
+    res.json({ suggestions });
+  } catch (error) {
+    console.error('Task extraction error:', error);
+    res.status(500).json({ error: 'Failed to extract tasks' });
+  }
+});
+
+app.post('/api/tasks/from-suggestion', async (req, res) => {
+  try {
+    const { email, suggestion } = req.body;
+
+    if (!email || !suggestion) {
+      return res.status(400).json({ error: 'Email and suggestion required' });
+    }
+
+    const taskId = await createTaskFromSuggestion(email, suggestion);
+    res.json({ success: true, task_id: taskId });
+  } catch (error) {
+    console.error('Create task from suggestion error:', error);
+    res.status(500).json({ error: 'Failed to create task' });
   }
 });
 

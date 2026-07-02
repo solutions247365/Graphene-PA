@@ -63,9 +63,23 @@ export async function initDb() {
       FOREIGN KEY (account_email) REFERENCES accounts(email)
     );
 
+    CREATE TABLE IF NOT EXISTS tasks (
+      id TEXT PRIMARY KEY,
+      account_email TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT,
+      due_date DATETIME,
+      is_completed BOOLEAN DEFAULT 0,
+      source_type TEXT,
+      source_id TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (account_email) REFERENCES accounts(email)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_emails_account ON emails(account_email);
     CREATE INDEX IF NOT EXISTS idx_events_account ON events(account_email);
     CREATE INDEX IF NOT EXISTS idx_messages_account ON messages(account_email);
+    CREATE INDEX IF NOT EXISTS idx_tasks_account ON tasks(account_email);
   `);
 
   return db;
