@@ -204,6 +204,79 @@
       </div>
     </main>
 
+    <main class="view" id="view-settings" style="display: none;">
+      <div class="settings-container">
+        <h2>Settings & Preferences</h2>
+
+        <div class="settings-section">
+          <h3>Appearance</h3>
+          <div class="settings-group">
+            <label for="theme-select" class="settings-label">Theme</label>
+            <select id="theme-select" class="form-control">
+              <option value="auto">Auto (System)</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3>Notifications</h3>
+          <div class="settings-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="notifications-enabled" />
+              <span>Enable notifications</span>
+            </label>
+          </div>
+          <div class="settings-group">
+            <label for="notification-type" class="settings-label">Notification Type</label>
+            <select id="notification-type" class="form-control">
+              <option value="toast">Toast (In-app)</option>
+              <option value="browser">Browser</option>
+              <option value="both">Both</option>
+            </select>
+          </div>
+          <div class="settings-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="notification-sound" />
+              <span>Sound notifications</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3>Sync & Data</h3>
+          <div class="settings-group">
+            <label for="sync-frequency" class="settings-label">Sync Frequency (minutes)</label>
+            <input type="number" id="sync-frequency" class="form-control" min="1" max="60" />
+          </div>
+          <div class="settings-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="hide-completed" />
+              <span>Hide completed tasks</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3>Tasks Display</h3>
+          <div class="settings-group">
+            <label for="sort-select" class="settings-label">Sort Tasks By</label>
+            <select id="sort-select" class="form-control">
+              <option value="due_date">Due Date</option>
+              <option value="created_at">Created Date</option>
+              <option value="title">Title (A-Z)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="settings-actions">
+          <button class="btn btn-primary" id="save-settings-btn">Save Settings</button>
+          <button class="btn btn-tertiary" id="reset-settings-btn">Reset to Defaults</button>
+        </div>
+      </div>
+    </main>
+
     <form class="composer" id="composer">
       <button class="icon-btn" type="button" aria-label="Voice input">
         <svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M19 11a7 7 0 0 1-14 0M12 18v3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
@@ -370,7 +443,7 @@
 </div>
 
 <script type="module">
-  import { initIndexedDB, loginWithTutanota, logoutFromTutanota, fetchEmails, fetchEvents, getCachedEmails, getCachedEvents, triggerSync, fetchMessages, getCachedMessages, fetchTasks, fetchTaskSuggestions, createNewTask, acceptTaskSuggestion, updateTask, deleteTask, createRecurringTask, getRecurringTasks, getTaskTemplates, createTaskTemplate, deleteTaskTemplate, useTaskTemplate } from './client.js';
+  import { initIndexedDB, loginWithTutanota, logoutFromTutanota, fetchEmails, fetchEvents, getCachedEmails, getCachedEvents, triggerSync, fetchMessages, getCachedMessages, fetchTasks, fetchTaskSuggestions, createNewTask, acceptTaskSuggestion, updateTask, deleteTask, createRecurringTask, getRecurringTasks, getTaskTemplates, createTaskTemplate, deleteTaskTemplate, useTaskTemplate, getPreferences, updatePreferences } from './client.js';
 
   const loginForm = document.getElementById('login-form');
   const viewLogin = document.getElementById('view-login');
@@ -393,6 +466,7 @@
     'view-messages': document.getElementById('view-messages'),
     'view-schedule': document.getElementById('view-schedule'),
     'view-profile': document.getElementById('view-profile'),
+    'view-settings': document.getElementById('view-settings'),
   };
 
   function switchView(viewId) {
@@ -668,6 +742,22 @@
     document.getElementById('profile-events').textContent = events.length;
   }
 
+  async function updateSettingsView() {
+    try {
+      const { preferences } = await getPreferences(currentEmail);
+
+      document.getElementById('theme-select').value = preferences.theme || 'auto';
+      document.getElementById('notifications-enabled').checked = preferences.notifications_enabled;
+      document.getElementById('notification-type').value = preferences.notification_type || 'toast';
+      document.getElementById('notification-sound').checked = preferences.notification_sound;
+      document.getElementById('sync-frequency').value = preferences.sync_frequency_minutes || 5;
+      document.getElementById('hide-completed').checked = preferences.hide_completed_tasks;
+      document.getElementById('sort-select').value = preferences.task_list_sort || 'due_date';
+    } catch (error) {
+      console.error('Error loading preferences:', error);
+    }
+  }
+
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('email-input').value;
@@ -716,22 +806,84 @@
   syncBtn.addEventListener('click', performSync);
 
   document.getElementById('settings-btn').addEventListener('click', async () => {
-    if (confirm('Sign out of Tutanota?')) {
-      try {
-        await logoutFromTutanota(currentEmail);
-      } catch (error) {
-        console.error('Logout error:', error);
-      }
-
-      viewChatWrapper.style.display = 'none';
-      viewLogin.style.display = 'flex';
-      loginForm.reset();
-      currentEmail = null;
-      syncStatus.classList.remove('is-synced');
-    }
+    switchView('view-settings');
+    await updateSettingsView();
   });
 
   document.getElementById('manual-sync-btn').addEventListener('click', performSync);
+
+  // Settings handlers
+  document.getElementById('save-settings-btn').addEventListener('click', async () => {
+    try {
+      const preferences = {
+        theme: document.getElementById('theme-select').value,
+        notifications_enabled: document.getElementById('notifications-enabled').checked,
+        notification_type: document.getElementById('notification-type').value,
+        notification_sound: document.getElementById('notification-sound').checked,
+        sync_frequency_minutes: parseInt(document.getElementById('sync-frequency').value),
+        hide_completed_tasks: document.getElementById('hide-completed').checked,
+        task_list_sort: document.getElementById('sort-select').value,
+      };
+
+      await updatePreferences(currentEmail, preferences);
+
+      // Apply theme immediately if changed
+      const themeSelect = document.getElementById('theme-select');
+      applyTheme(themeSelect.value);
+
+      showNotification('Settings saved', 'Your preferences have been updated', 'success');
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      showNotification('Error', 'Failed to save settings', 'warning');
+    }
+  });
+
+  document.getElementById('reset-settings-btn').addEventListener('click', async () => {
+    if (confirm('Reset all settings to defaults?')) {
+      try {
+        const preferences = {
+          theme: 'auto',
+          notifications_enabled: true,
+          notification_type: 'toast',
+          notification_sound: true,
+          sync_frequency_minutes: 5,
+          hide_completed_tasks: false,
+          task_list_sort: 'due_date',
+        };
+
+        await updatePreferences(currentEmail, preferences);
+        await updateSettingsView();
+        applyTheme('auto');
+        showNotification('Settings reset', 'Preferences restored to defaults', 'success');
+      } catch (error) {
+        console.error('Error resetting settings:', error);
+        showNotification('Error', 'Failed to reset settings', 'warning');
+      }
+    }
+  });
+
+  // Theme application function
+  function applyTheme(theme) {
+    if (theme === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    } else if (theme === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+  }
+
+  // Apply stored theme on load
+  (async () => {
+    if (currentEmail) {
+      try {
+        const { preferences } = await getPreferences(currentEmail);
+        applyTheme(preferences.theme || 'auto');
+      } catch (error) {
+        console.error('Error applying theme:', error);
+      }
+    }
+  })();
 
   // Notification system
   function showNotification(title, message, type = 'info') {

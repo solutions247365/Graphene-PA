@@ -416,3 +416,27 @@ export async function useTaskTemplate(email, templateId) {
 
   return res.json();
 }
+
+export async function getPreferences(email) {
+  const res = await fetch(`${API_BASE}/api/preferences?email=${encodeURIComponent(email)}`);
+
+  if (!res.ok) {
+    throw new Error('Failed to fetch preferences');
+  }
+
+  return res.json();
+}
+
+export async function updatePreferences(email, preferences) {
+  const res = await fetch(`${API_BASE}/api/preferences`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, ...preferences }),
+  });
+
+  if (!res.ok) {
+    throw new Error('Failed to update preferences');
+  }
+
+  return res.json();
+}

@@ -117,6 +117,19 @@ export async function initDb() {
       FOREIGN KEY (account_email) REFERENCES accounts(email)
     );
 
+    CREATE TABLE IF NOT EXISTS user_preferences (
+      account_email TEXT PRIMARY KEY,
+      theme TEXT DEFAULT 'auto',
+      notifications_enabled BOOLEAN DEFAULT 1,
+      notification_type TEXT DEFAULT 'toast',
+      sync_frequency_minutes INTEGER DEFAULT 5,
+      notification_sound BOOLEAN DEFAULT 1,
+      hide_completed_tasks BOOLEAN DEFAULT 0,
+      task_list_sort TEXT DEFAULT 'due_date',
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (account_email) REFERENCES accounts(email)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_emails_account ON emails(account_email);
     CREATE INDEX IF NOT EXISTS idx_events_account ON events(account_email);
     CREATE INDEX IF NOT EXISTS idx_messages_account ON messages(account_email);

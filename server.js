@@ -584,6 +584,94 @@ app.post('/api/sync', async (req, res) => {
   }
 });
 
+/* ===== user preferences routes ===== */
+
+app.get('/api/preferences', async (req, res) => {
+  try {
+    const { email } = req.query;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email query parameter required' });
+    }
+
+    const db = getDb();
+    let prefs = await db.get('SELECT * FROM user_preferences WHERE account_email = ?', [email]);
+
+    if (!prefs) {
+      await db.run(
+        `INSERT INTO user_preferences (account_email) VALUES (?)`,
+        [email]
+      );
+      prefs = await db.get('SELECT * FROM user_preferences WHERE account_email = ?', [email]);
+    }
+
+    res.json({ preferences: prefs });
+  } catch (error) {
+    console.error('Fetch preferences error:', error);
+    res.status(500).json({ error: 'Failed to fetch preferences' });
+  }
+});
+
+app.put('/api/preferences', async (req, res) => {
+  try {
+    const { email, theme, notifications_enabled, notification_type, sync_frequency_minutes, notification_sound, hide_completed_tasks, task_list_sort } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email required' });
+    }
+
+    const db = getDb();
+
+    const updates = [];
+    const values = [];
+
+    if (theme !== undefined) {
+      updates.push('theme = ?');
+      values.push(theme);
+    }
+    if (notifications_enabled !== undefined) {
+      updates.push('notifications_enabled = ?');
+      values.push(notifications_enabled ? 1 : 0);
+    }
+    if (notification_type !== undefined) {
+      updates.push('notification_type = ?');
+      values.push(notification_type);
+    }
+    if (sync_frequency_minutes !== undefined) {
+      updates.push('sync_frequency_minutes = ?');
+      values.push(sync_frequency_minutes);
+    }
+    if (notification_sound !== undefined) {
+      updates.push('notification_sound = ?');
+      values.push(notification_sound ? 1 : 0);
+    }
+    if (hide_completed_tasks !== undefined) {
+      updates.push('hide_completed_tasks = ?');
+      values.push(hide_completed_tasks ? 1 : 0);
+    }
+    if (task_list_sort !== undefined) {
+      updates.push('task_list_sort = ?');
+      values.push(task_list_sort);
+    }
+
+    updates.push('updated_at = CURRENT_TIMESTAMP');
+    values.push(email);
+
+    if (updates.length > 1) {
+      await db.run(
+        `UPDATE user_preferences SET ${updates.join(', ')} WHERE account_email = ?`,
+        values
+      );
+    }
+
+    const prefs = await db.get('SELECT * FROM user_preferences WHERE account_email = ?', [email]);
+    res.json({ success: true, preferences: prefs });
+  } catch (error) {
+    console.error('Update preferences error:', error);
+    res.status(500).json({ error: 'Failed to update preferences' });
+  }
+});
+
 /* ===== sync logic ===== */
 
 async function syncWithTutanota(email, password) {
