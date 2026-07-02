@@ -464,8 +464,13 @@
         }
       }
 
-      // Fetch and cache data
-      await Promise.all([fetchEmails(email), fetchEvents(email), fetchMessages(email)]);
+      // Fetch and cache all data (emails, events, messages, tasks)
+      await Promise.all([
+        fetchEmails(email),
+        fetchEvents(email),
+        fetchMessages(email),
+        fetchTasks(email),
+      ]);
       await updateSyncStatus();
     } catch (error) {
       alert('Login failed: ' + error.message);

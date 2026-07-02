@@ -27,6 +27,9 @@ export async function initIndexedDB() {
       if (!database.objectStoreNames.contains('messages')) {
         database.createObjectStore('messages', { keyPath: 'id' });
       }
+      if (!database.objectStoreNames.contains('tasks')) {
+        database.createObjectStore('tasks', { keyPath: 'id' });
+      }
     };
   });
 }
@@ -184,7 +187,13 @@ export async function fetchTasks(email) {
     throw new Error('Failed to fetch tasks');
   }
 
-  return res.json();
+  const data = await res.json();
+  const tasks = data.tasks || [];
+
+  // Cache in IndexedDB
+  await cacheTasks(tasks);
+
+  return data;
 }
 
 export async function fetchTaskSuggestions(email) {
@@ -208,7 +217,12 @@ export async function createNewTask(email, title, description, dueDate) {
     throw new Error('Failed to create task');
   }
 
-  return res.json();
+  const result = await res.json();
+
+  // Refresh tasks cache
+  await fetchTasks(email);
+
+  return result;
 }
 
 export async function acceptTaskSuggestion(email, suggestion) {
@@ -236,6 +250,14 @@ export async function updateTask(taskId, updates) {
     throw new Error('Failed to update task');
   }
 
+  // Update local cache
+  const database = getDb();
+  const task = await database.get('tasks', taskId);
+  if (task) {
+    const updated = { ...task, ...updates };
+    await database.put('tasks', updated);
+  }
+
   return res.json();
 }
 
@@ -248,5 +270,33 @@ export async function deleteTask(taskId) {
     throw new Error('Failed to delete task');
   }
 
+  // Update local cache
+  const database = getDb();
+  const tx = database.transaction('tasks', 'readwrite');
+  const store = tx.objectStore('tasks');
+  await store.delete(taskId);
+
   return res.json();
+}
+
+export async function getCachedTasks() {
+  const database = getDb();
+  const tx = database.transaction('tasks', 'readonly');
+  const store = tx.objectStore('tasks');
+
+  return new Promise((resolve, reject) => {
+    const request = store.getAll();
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+  });
+}
+
+export async function cacheTasks(tasks) {
+  const database = getDb();
+  const tx = database.transaction('tasks', 'readwrite');
+  const store = tx.objectStore('tasks');
+
+  for (const task of tasks) {
+    await store.put(task);
+  }
 }
