@@ -378,6 +378,7 @@ svg {
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
   transition: background-color 0.15s ease;
+  cursor: pointer;
 }
 
 .item:active {
@@ -605,6 +606,7 @@ svg {
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
   transition: background-color 0.15s ease;
+  cursor: pointer;
 }
 
 .message-thread:active {
@@ -1066,6 +1068,14 @@ svg {
 
 .btn-tertiary:active {
   background: var(--color-surface-raised);
+}
+
+.detail-text {
+  margin: 0;
+  font-size: 14px;
+  color: var(--color-text);
+  line-height: 1.5;
+  word-wrap: break-word;
 }
 
 /* ---- reduced motion --------------------------------------------------------- */
