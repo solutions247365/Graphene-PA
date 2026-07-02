@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="Theme.GraphenePA" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:statusBarColor">#14171a</item>
+        <item name="android:navigationBarColor">#14171a</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+
+</resources>
