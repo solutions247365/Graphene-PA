@@ -112,6 +112,23 @@
             <button type="submit" class="btn btn-primary">Add Task</button>
           </form>
         </div>
+
+        <div class="task-section">
+          <h3>Create Recurring Task</h3>
+          <form id="recurring-task-form" class="task-form">
+            <input type="text" id="recurring-title" placeholder="Task title" required />
+            <textarea id="recurring-desc" placeholder="Description (optional)" rows="2"></textarea>
+            <select id="recurring-type" required>
+              <option value="">Select recurrence</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+            <input type="date" id="recurring-start" placeholder="Start date" required />
+            <input type="date" id="recurring-end" placeholder="End date (optional)" />
+            <button type="submit" class="btn btn-primary">Create Recurring Task</button>
+          </form>
+        </div>
       </div>
     </main>
 
@@ -281,7 +298,7 @@
 </div>
 
 <script type="module">
-  import { initIndexedDB, loginWithTutanota, logoutFromTutanota, fetchEmails, fetchEvents, getCachedEmails, getCachedEvents, triggerSync, fetchMessages, getCachedMessages, fetchTasks, fetchTaskSuggestions, createNewTask, acceptTaskSuggestion, updateTask, deleteTask } from './client.js';
+  import { initIndexedDB, loginWithTutanota, logoutFromTutanota, fetchEmails, fetchEvents, getCachedEmails, getCachedEvents, triggerSync, fetchMessages, getCachedMessages, fetchTasks, fetchTaskSuggestions, createNewTask, acceptTaskSuggestion, updateTask, deleteTask, createRecurringTask, getRecurringTasks } from './client.js';
 
   const loginForm = document.getElementById('login-form');
   const viewLogin = document.getElementById('view-login');
@@ -935,6 +952,26 @@
     } catch (error) {
       console.error('Error creating task:', error);
       alert('Failed to create task');
+    }
+  });
+
+  // Recurring task form
+  document.getElementById('recurring-task-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const title = document.getElementById('recurring-title').value;
+    const desc = document.getElementById('recurring-desc').value;
+    const type = document.getElementById('recurring-type').value;
+    const startDate = document.getElementById('recurring-start').value;
+    const endDate = document.getElementById('recurring-end').value;
+
+    try {
+      await createRecurringTask(currentEmail, title, desc, type, {}, startDate, endDate || null);
+      document.getElementById('recurring-task-form').reset();
+      showNotification('Recurring task created', `${title} will repeat ${type}`, 'success');
+      await updateTasksView();
+    } catch (error) {
+      console.error('Error creating recurring task:', error);
+      alert('Failed to create recurring task');
     }
   });
 

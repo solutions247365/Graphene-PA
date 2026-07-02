@@ -1011,7 +1011,12 @@ svg {
 
 .modal-form input[type="text"],
 .modal-form input[type="date"],
-.modal-form textarea {
+.modal-form select,
+.modal-form textarea,
+.task-form input[type="text"],
+.task-form input[type="date"],
+.task-form select,
+.task-form textarea {
   background: var(--color-bg);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
@@ -1019,6 +1024,16 @@ svg {
   padding: var(--space-3);
   font-family: inherit;
   font-size: 16px;
+}
+
+.task-form select,
+.modal-form select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa4ab' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-3) center;
+  background-size: 20px;
+  padding-right: 40px;
 }
 
 .modal-form textarea {

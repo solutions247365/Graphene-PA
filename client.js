@@ -300,3 +300,61 @@ export async function cacheTasks(tasks) {
     await store.put(task);
   }
 }
+
+export async function createRecurringTask(email, title, description, recurrenceType, recurrenceData, startDate, endDate = null) {
+  const res = await fetch(`${API_BASE}/api/recurring-tasks`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email,
+      title,
+      description,
+      recurrence_type: recurrenceType,
+      recurrence_data: recurrenceData,
+      start_date: startDate,
+      end_date: endDate,
+    }),
+  });
+
+  if (!res.ok) {
+    throw new Error('Failed to create recurring task');
+  }
+
+  return res.json();
+}
+
+export async function getRecurringTasks(email) {
+  const res = await fetch(`${API_BASE}/api/recurring-tasks?email=${encodeURIComponent(email)}`);
+
+  if (!res.ok) {
+    throw new Error('Failed to fetch recurring tasks');
+  }
+
+  return res.json();
+}
+
+export async function updateRecurringTask(taskId, updates) {
+  const res = await fetch(`${API_BASE}/api/recurring-tasks/${taskId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+  });
+
+  if (!res.ok) {
+    throw new Error('Failed to update recurring task');
+  }
+
+  return res.json();
+}
+
+export async function deleteRecurringTask(taskId) {
+  const res = await fetch(`${API_BASE}/api/recurring-tasks/${taskId}`, {
+    method: 'DELETE',
+  });
+
+  if (!res.ok) {
+    throw new Error('Failed to delete recurring task');
+  }
+
+  return res.json();
+}

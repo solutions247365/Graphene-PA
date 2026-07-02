@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import crypto from 'crypto';
 import { initDb, getDb } from './db.js';
 import { encryptPassword, decryptPassword } from './crypto.js';
 import { authenticateWithTutanota, fetchEmailsFromTutanota, fetchEventsFromTutanota, fetchMessagesFromTutanota } from './tutanota.js';
@@ -240,6 +241,176 @@ app.post('/api/tasks/from-suggestion', async (req, res) => {
   }
 });
 
+/* ===== recurring task routes ===== */
+
+app.get('/api/recurring-tasks', async (req, res) => {
+  try {
+    const { email } = req.query;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email query parameter required' });
+    }
+
+    const db = getDb();
+    const recurringTasks = await db.all(
+      `SELECT id, title, description, recurrence_type, recurrence_data, start_date, end_date, next_due_date, is_active
+       FROM recurring_tasks
+       WHERE account_email = ? AND is_active = 1
+       ORDER BY next_due_date ASC`,
+      [email]
+    );
+
+    res.json({ recurring_tasks: recurringTasks });
+  } catch (error) {
+    console.error('Fetch recurring tasks error:', error);
+    res.status(500).json({ error: 'Failed to fetch recurring tasks' });
+  }
+});
+
+app.post('/api/recurring-tasks', async (req, res) => {
+  try {
+    const { email, title, description, recurrence_type, recurrence_data, start_date, end_date } = req.body;
+
+    if (!email || !title || !recurrence_type || !start_date) {
+      return res.status(400).json({ error: 'Email, title, recurrence type, and start date required' });
+    }
+
+    const db = getDb();
+    const taskId = crypto.randomUUID();
+    const nextDueDate = calculateNextDueDate(start_date, recurrence_type, recurrence_data);
+
+    await db.run(
+      `INSERT INTO recurring_tasks (id, account_email, title, description, recurrence_type, recurrence_data, start_date, end_date, next_due_date, is_active)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+      [taskId, email, title, description || null, recurrence_type, JSON.stringify(recurrence_data || {}), start_date, end_date || null, nextDueDate]
+    );
+
+    res.json({ success: true, recurring_task_id: taskId });
+  } catch (error) {
+    console.error('Create recurring task error:', error);
+    res.status(500).json({ error: 'Failed to create recurring task' });
+  }
+});
+
+app.put('/api/recurring-tasks/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    const db = getDb();
+    const fieldsToUpdate = [];
+    const values = [];
+
+    if (updates.title !== undefined) {
+      fieldsToUpdate.push('title = ?');
+      values.push(updates.title);
+    }
+    if (updates.description !== undefined) {
+      fieldsToUpdate.push('description = ?');
+      values.push(updates.description);
+    }
+    if (updates.is_active !== undefined) {
+      fieldsToUpdate.push('is_active = ?');
+      values.push(updates.is_active ? 1 : 0);
+    }
+
+    if (fieldsToUpdate.length > 0) {
+      values.push(id);
+      await db.run(
+        `UPDATE recurring_tasks SET ${fieldsToUpdate.join(', ')} WHERE id = ?`,
+        values
+      );
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Update recurring task error:', error);
+    res.status(500).json({ error: 'Failed to update recurring task' });
+  }
+});
+
+app.delete('/api/recurring-tasks/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const db = getDb();
+
+    // Mark as inactive instead of deleting
+    await db.run('UPDATE recurring_tasks SET is_active = 0 WHERE id = ?', [id]);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Delete recurring task error:', error);
+    res.status(500).json({ error: 'Failed to delete recurring task' });
+  }
+});
+
+/* ===== recurring task helpers ===== */
+
+function calculateNextDueDate(startDate, recurrenceType, recurrenceData = {}) {
+  const start = new Date(startDate);
+  const now = new Date();
+
+  if (recurrenceType === 'daily') {
+    const next = new Date(start);
+    while (next <= now) {
+      next.setDate(next.getDate() + 1);
+    }
+    return next.toISOString().split('T')[0];
+  }
+
+  if (recurrenceType === 'weekly') {
+    const next = new Date(start);
+    const dayOfWeek = next.getDay();
+    while (next <= now) {
+      next.setDate(next.getDate() + 7);
+    }
+    return next.toISOString().split('T')[0];
+  }
+
+  if (recurrenceType === 'monthly') {
+    const next = new Date(start);
+    const day = next.getDate();
+    while (next <= now) {
+      next.setMonth(next.getMonth() + 1);
+      next.setDate(Math.min(day, new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate()));
+    }
+    return next.toISOString().split('T')[0];
+  }
+
+  return startDate;
+}
+
+async function generateRecurringTaskInstances() {
+  const db = getDb();
+  const recurringTasks = await db.all(
+    `SELECT id, account_email, title, description, recurrence_type, recurrence_data, next_due_date, end_date, is_active
+     FROM recurring_tasks
+     WHERE is_active = 1 AND next_due_date <= DATE('now')`
+  );
+
+  for (const rt of recurringTasks) {
+    // Create a task instance
+    const taskId = crypto.randomUUID();
+    await db.run(
+      `INSERT INTO tasks (id, account_email, title, description, due_date, recurring_task_id)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [taskId, rt.account_email, rt.title, rt.description, rt.next_due_date, rt.id]
+    );
+
+    // Calculate next due date
+    const nextDue = calculateNextDueDate(rt.next_due_date, rt.recurrence_type, JSON.parse(rt.recurrence_data || '{}'));
+    const endDate = rt.end_date ? new Date(rt.end_date) : null;
+    const nextDueDate = new Date(nextDue);
+
+    // Check if past end date
+    if (endDate && nextDueDate > endDate) {
+      await db.run('UPDATE recurring_tasks SET is_active = 0 WHERE id = ?', [rt.id]);
+    } else {
+      await db.run('UPDATE recurring_tasks SET next_due_date = ? WHERE id = ?', [nextDue, rt.id]);
+    }
+  }
+}
+
 /* ===== SMS sync from Android (native) ===== */
 
 app.post('/api/sms/sync', async (req, res) => {
@@ -327,6 +498,18 @@ async function syncWithTutanota(email, password) {
     throw error;
   }
 }
+
+// Periodic task generation for recurring tasks
+setInterval(async () => {
+  try {
+    await generateRecurringTaskInstances();
+  } catch (error) {
+    console.error('Error generating recurring task instances:', error);
+  }
+}, 60 * 60 * 1000); // Check every hour
+
+// Generate on startup
+await generateRecurringTaskInstances();
 
 app.listen(PORT, () => {
   console.log(`Graphene PA server running on http://localhost:${PORT}`);

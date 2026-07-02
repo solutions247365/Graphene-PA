@@ -72,6 +72,23 @@ export async function initDb() {
       is_completed BOOLEAN DEFAULT 0,
       source_type TEXT,
       source_id TEXT,
+      recurring_task_id TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (account_email) REFERENCES accounts(email),
+      FOREIGN KEY (recurring_task_id) REFERENCES recurring_tasks(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS recurring_tasks (
+      id TEXT PRIMARY KEY,
+      account_email TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT,
+      recurrence_type TEXT NOT NULL,
+      recurrence_data TEXT,
+      start_date DATETIME NOT NULL,
+      end_date DATETIME,
+      next_due_date DATETIME,
+      is_active BOOLEAN DEFAULT 1,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (account_email) REFERENCES accounts(email)
     );
@@ -80,6 +97,8 @@ export async function initDb() {
     CREATE INDEX IF NOT EXISTS idx_events_account ON events(account_email);
     CREATE INDEX IF NOT EXISTS idx_messages_account ON messages(account_email);
     CREATE INDEX IF NOT EXISTS idx_tasks_account ON tasks(account_email);
+    CREATE INDEX IF NOT EXISTS idx_recurring_tasks_account ON recurring_tasks(account_email);
+    CREATE INDEX IF NOT EXISTS idx_tasks_recurring ON tasks(recurring_task_id);
   `);
 
   return db;
