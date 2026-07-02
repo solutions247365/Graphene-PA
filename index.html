@@ -270,6 +270,17 @@
           </div>
         </div>
 
+        <div class="settings-section">
+          <h3>Data Export</h3>
+          <p class="settings-description">Export your data in standard formats</p>
+          <div class="export-grid">
+            <button type="button" class="btn btn-secondary" id="export-tasks-csv">Tasks (CSV)</button>
+            <button type="button" class="btn btn-secondary" id="export-emails-csv">Emails (CSV)</button>
+            <button type="button" class="btn btn-secondary" id="export-events-csv">Events (CSV)</button>
+            <button type="button" class="btn btn-secondary" id="export-all-json">Full Backup (JSON)</button>
+          </div>
+        </div>
+
         <div class="settings-actions">
           <button class="btn btn-primary" id="save-settings-btn">Save Settings</button>
           <button class="btn btn-tertiary" id="reset-settings-btn">Reset to Defaults</button>
@@ -443,7 +454,7 @@
 </div>
 
 <script type="module">
-  import { initIndexedDB, loginWithTutanota, logoutFromTutanota, fetchEmails, fetchEvents, getCachedEmails, getCachedEvents, triggerSync, fetchMessages, getCachedMessages, fetchTasks, fetchTaskSuggestions, createNewTask, acceptTaskSuggestion, updateTask, deleteTask, createRecurringTask, getRecurringTasks, getTaskTemplates, createTaskTemplate, deleteTaskTemplate, useTaskTemplate, getPreferences, updatePreferences } from './client.js';
+  import { initIndexedDB, loginWithTutanota, logoutFromTutanota, fetchEmails, fetchEvents, getCachedEmails, getCachedEvents, triggerSync, fetchMessages, getCachedMessages, fetchTasks, fetchTaskSuggestions, createNewTask, acceptTaskSuggestion, updateTask, deleteTask, createRecurringTask, getRecurringTasks, getTaskTemplates, createTaskTemplate, deleteTaskTemplate, useTaskTemplate, getPreferences, updatePreferences, exportTasks, exportEmails, exportEvents, exportAll } from './client.js';
 
   const loginForm = document.getElementById('login-form');
   const viewLogin = document.getElementById('view-login');
@@ -859,6 +870,51 @@
         console.error('Error resetting settings:', error);
         showNotification('Error', 'Failed to reset settings', 'warning');
       }
+    }
+  });
+
+  // Export handlers
+  document.getElementById('export-tasks-csv').addEventListener('click', async () => {
+    try {
+      showNotification('Exporting', 'Preparing your tasks...', 'info');
+      await exportTasks(currentEmail, 'csv');
+      showNotification('Export complete', 'Tasks exported to CSV', 'success');
+    } catch (error) {
+      console.error('Error exporting tasks:', error);
+      showNotification('Error', 'Failed to export tasks', 'warning');
+    }
+  });
+
+  document.getElementById('export-emails-csv').addEventListener('click', async () => {
+    try {
+      showNotification('Exporting', 'Preparing your emails...', 'info');
+      await exportEmails(currentEmail, 'csv');
+      showNotification('Export complete', 'Emails exported to CSV', 'success');
+    } catch (error) {
+      console.error('Error exporting emails:', error);
+      showNotification('Error', 'Failed to export emails', 'warning');
+    }
+  });
+
+  document.getElementById('export-events-csv').addEventListener('click', async () => {
+    try {
+      showNotification('Exporting', 'Preparing your events...', 'info');
+      await exportEvents(currentEmail, 'csv');
+      showNotification('Export complete', 'Events exported to CSV', 'success');
+    } catch (error) {
+      console.error('Error exporting events:', error);
+      showNotification('Error', 'Failed to export events', 'warning');
+    }
+  });
+
+  document.getElementById('export-all-json').addEventListener('click', async () => {
+    try {
+      showNotification('Exporting', 'Creating backup...', 'info');
+      await exportAll(currentEmail);
+      showNotification('Backup complete', 'Full data backed up', 'success');
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      showNotification('Error', 'Failed to create backup', 'warning');
     }
   });
 

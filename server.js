@@ -672,6 +672,170 @@ app.put('/api/preferences', async (req, res) => {
   }
 });
 
+/* ===== export routes ===== */
+
+app.get('/api/export/tasks', async (req, res) => {
+  try {
+    const { email, format } = req.query;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email query parameter required' });
+    }
+
+    const db = getDb();
+    const tasks = await db.all(
+      `SELECT * FROM tasks WHERE account_email = ? ORDER BY due_date`,
+      [email]
+    );
+
+    if (format === 'csv') {
+      const csv = tasksToCSV(tasks);
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="tasks.csv"');
+      res.send(csv);
+    } else if (format === 'json') {
+      res.json({ tasks });
+    } else {
+      res.status(400).json({ error: 'Unsupported format. Use csv or json' });
+    }
+  } catch (error) {
+    console.error('Export tasks error:', error);
+    res.status(500).json({ error: 'Failed to export tasks' });
+  }
+});
+
+app.get('/api/export/emails', async (req, res) => {
+  try {
+    const { email, format } = req.query;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email query parameter required' });
+    }
+
+    const db = getDb();
+    const emails = await db.all(
+      `SELECT * FROM emails WHERE account_email = ? ORDER BY received_at DESC`,
+      [email]
+    );
+
+    if (format === 'csv') {
+      const csv = emailsToCSV(emails);
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="emails.csv"');
+      res.send(csv);
+    } else if (format === 'json') {
+      res.json({ emails });
+    } else {
+      res.status(400).json({ error: 'Unsupported format. Use csv or json' });
+    }
+  } catch (error) {
+    console.error('Export emails error:', error);
+    res.status(500).json({ error: 'Failed to export emails' });
+  }
+});
+
+app.get('/api/export/events', async (req, res) => {
+  try {
+    const { email, format } = req.query;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email query parameter required' });
+    }
+
+    const db = getDb();
+    const events = await db.all(
+      `SELECT * FROM events WHERE account_email = ? ORDER BY start_time`,
+      [email]
+    );
+
+    if (format === 'csv') {
+      const csv = eventsToCSV(events);
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="events.csv"');
+      res.send(csv);
+    } else if (format === 'json') {
+      res.json({ events });
+    } else {
+      res.status(400).json({ error: 'Unsupported format. Use csv or json' });
+    }
+  } catch (error) {
+    console.error('Export events error:', error);
+    res.status(500).json({ error: 'Failed to export events' });
+  }
+});
+
+app.get('/api/export/all', async (req, res) => {
+  try {
+    const { email, format } = req.query;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email query parameter required' });
+    }
+
+    const db = getDb();
+    const [tasks, emails, events] = await Promise.all([
+      db.all(`SELECT * FROM tasks WHERE account_email = ? ORDER BY due_date`, [email]),
+      db.all(`SELECT * FROM emails WHERE account_email = ? ORDER BY received_at DESC`, [email]),
+      db.all(`SELECT * FROM events WHERE account_email = ? ORDER BY start_time`, [email]),
+    ]);
+
+    if (format === 'json') {
+      const data = {
+        exported_at: new Date().toISOString(),
+        email,
+        tasks,
+        emails,
+        events,
+      };
+      res.json(data);
+    } else {
+      res.status(400).json({ error: 'Full export only supports json format' });
+    }
+  } catch (error) {
+    console.error('Export all error:', error);
+    res.status(500).json({ error: 'Failed to export data' });
+  }
+});
+
+/* ===== export helpers ===== */
+
+function tasksToCSV(tasks) {
+  const headers = ['Title', 'Description', 'Due Date', 'Completed', 'Created'];
+  const rows = tasks.map((t) => [
+    `"${(t.title || '').replace(/"/g, '""')}"`,
+    `"${(t.description || '').replace(/"/g, '""')}"`,
+    t.due_date || '',
+    t.is_completed ? 'Yes' : 'No',
+    t.created_at || '',
+  ]);
+
+  return [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+}
+
+function emailsToCSV(emails) {
+  const headers = ['From', 'Subject', 'Date', 'Read'];
+  const rows = emails.map((e) => [
+    `"${(e.sender || '').replace(/"/g, '""')}"`,
+    `"${(e.subject || '').replace(/"/g, '""')}"`,
+    e.received_at || '',
+    e.is_read ? 'Yes' : 'No',
+  ]);
+
+  return [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+}
+
+function eventsToCSV(events) {
+  const headers = ['Title', 'Description', 'Start', 'End'];
+  const rows = events.map((e) => [
+    `"${(e.title || '').replace(/"/g, '""')}"`,
+    `"${(e.description || '').replace(/"/g, '""')}"`,
+    e.start_time || '',
+    e.end_time || '',
+  ]);
+
+  return [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+}
+
 /* ===== sync logic ===== */
 
 async function syncWithTutanota(email, password) {

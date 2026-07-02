@@ -1448,6 +1448,30 @@ svg {
   flex: 1;
 }
 
+.settings-description {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.export-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.export-grid .btn {
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+@media (min-width: 600px) {
+  .export-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
 /* ---- reduced motion --------------------------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {

@@ -440,3 +440,71 @@ export async function updatePreferences(email, preferences) {
 
   return res.json();
 }
+
+export async function exportTasks(email, format = 'csv') {
+  const res = await fetch(`${API_BASE}/api/export/tasks?email=${encodeURIComponent(email)}&format=${format}`);
+
+  if (!res.ok) {
+    throw new Error('Failed to export tasks');
+  }
+
+  if (format === 'csv') {
+    const blob = await res.blob();
+    downloadFile(blob, 'tasks.csv');
+  } else {
+    return res.json();
+  }
+}
+
+export async function exportEmails(email, format = 'csv') {
+  const res = await fetch(`${API_BASE}/api/export/emails?email=${encodeURIComponent(email)}&format=${format}`);
+
+  if (!res.ok) {
+    throw new Error('Failed to export emails');
+  }
+
+  if (format === 'csv') {
+    const blob = await res.blob();
+    downloadFile(blob, 'emails.csv');
+  } else {
+    return res.json();
+  }
+}
+
+export async function exportEvents(email, format = 'csv') {
+  const res = await fetch(`${API_BASE}/api/export/events?email=${encodeURIComponent(email)}&format=${format}`);
+
+  if (!res.ok) {
+    throw new Error('Failed to export events');
+  }
+
+  if (format === 'csv') {
+    const blob = await res.blob();
+    downloadFile(blob, 'events.csv');
+  } else {
+    return res.json();
+  }
+}
+
+export async function exportAll(email) {
+  const res = await fetch(`${API_BASE}/api/export/all?email=${encodeURIComponent(email)}&format=json`);
+
+  if (!res.ok) {
+    throw new Error('Failed to export data');
+  }
+
+  const data = await res.json();
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  downloadFile(blob, `backup-${new Date().toISOString().split('T')[0]}.json`);
+}
+
+function downloadFile(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
