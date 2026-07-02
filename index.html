@@ -132,6 +132,17 @@
       </div>
     </main>
 
+    <main class="view" id="view-emails" style="display: none;">
+      <div class="emails-container">
+        <div class="email-list-header">
+          <div class="email-search">
+            <input type="text" id="email-search" placeholder="Search emails..." />
+          </div>
+        </div>
+        <div class="email-list" id="emails-list"></div>
+      </div>
+    </main>
+
     <main class="view" id="view-messages" style="display: none;">
       <div class="messages-view" id="messages-list"></div>
     </main>
@@ -266,6 +277,37 @@
       </div>
     </div>
 
+    <!-- Email Detail Modal -->
+    <div class="modal-backdrop" id="email-detail-modal" style="display: none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Email</h2>
+          <button type="button" class="modal-close" aria-label="Close">×</button>
+        </div>
+        <div class="modal-form">
+          <div class="form-group">
+            <label>From</label>
+            <p class="detail-text" id="detail-email-from"></p>
+          </div>
+          <div class="form-group">
+            <label>Subject</label>
+            <p class="detail-text" id="detail-email-subject"></p>
+          </div>
+          <div class="form-group">
+            <label>Date</label>
+            <p class="detail-text" id="detail-email-date"></p>
+          </div>
+          <div class="form-group">
+            <label>Body</label>
+            <div id="detail-email-body" style="max-height: 400px; overflow-y: auto; background: var(--color-bg); border-radius: var(--radius-sm); padding: var(--space-3); white-space: pre-wrap; word-wrap: break-word; font-size: 13px; line-height: 1.5;"></div>
+          </div>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-tertiary" id="detail-email-close">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Notification Toast -->
     <div class="notification-container" id="notification-container"></div>
 
@@ -278,6 +320,10 @@
         <svg viewBox="0 0 24 24" width="22" height="22"><path d="m4 12 4 4 12-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span>Tasks</span>
         <span class="tab-badge" id="tasks-badge" style="display: none;">0</span>
+      </button>
+      <button class="tab-btn" type="button" data-view="view-emails">
+        <svg viewBox="0 0 24 24" width="22" height="22"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2Z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="m4 6 8 5 8-5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+        <span>Emails</span>
       </button>
       <button class="tab-btn" type="button" data-view="view-messages">
         <svg viewBox="0 0 24 24" width="22" height="22"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
@@ -317,6 +363,7 @@
   const views = {
     'view-chat': document.getElementById('view-chat'),
     'view-tasks': document.getElementById('view-tasks'),
+    'view-emails': document.getElementById('view-emails'),
     'view-messages': document.getElementById('view-messages'),
     'view-schedule': document.getElementById('view-schedule'),
     'view-profile': document.getElementById('view-profile'),
@@ -341,6 +388,7 @@
       switchView(viewId);
       if (viewId === 'view-profile') updateProfileView();
       if (viewId === 'view-tasks') updateTasksView();
+      if (viewId === 'view-emails') updateEmailsView();
       if (viewId === 'view-messages') updateMessagesView();
       if (viewId === 'view-schedule') updateScheduleView();
     });
@@ -456,6 +504,45 @@
     } catch (error) {
       console.error('Error updating tasks:', error);
       document.getElementById('tasks-list').innerHTML = '<div style="color: var(--color-text-faint);">Error loading tasks</div>';
+    }
+  }
+
+  async function updateEmailsView() {
+    const emailsList = document.getElementById('emails-list');
+    try {
+      const emails = await getCachedEmails();
+
+      if (emails.length === 0) {
+        emailsList.innerHTML = '<div style="padding: var(--space-5); text-align: center; color: var(--color-text-faint);">No emails yet</div>';
+        window.currentEmails = [];
+        return;
+      }
+
+      // Sort by date, most recent first
+      const sorted = emails.sort((a, b) => new Date(b.received_at) - new Date(a.received_at));
+
+      emailsList.innerHTML = sorted
+        .map((email) => {
+          const date = new Date(email.received_at);
+          const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+          const preview = email.body.length > 60 ? email.body.substring(0, 60) + '…' : email.body;
+          return `
+            <div class="email-item ${email.is_read ? 'read' : 'unread'}" onclick="handleOpenEmailDetail('${email.id}')">
+              <div class="email-item-header">
+                <div class="email-sender">${email.sender}</div>
+                <div class="email-item-date">${dateStr}</div>
+              </div>
+              <div class="email-subject">${email.subject || '(no subject)'}</div>
+              <div class="email-preview">${preview}</div>
+            </div>
+          `;
+        })
+        .join('');
+
+      window.currentEmails = emails;
+    } catch (error) {
+      console.error('Error updating emails:', error);
+      emailsList.innerHTML = '<div style="color: var(--color-text-faint);">Error loading emails</div>';
     }
   }
 
@@ -936,6 +1023,44 @@
   document.getElementById('detail-message-close').addEventListener('click', closeMessageDetail);
   messageDetailModal.addEventListener('click', (e) => {
     if (e.target === messageDetailModal) closeMessageDetail();
+  });
+
+  // Email detail modal handlers
+  let currentDetailEmailId = null;
+  const emailDetailModal = document.getElementById('email-detail-modal');
+  const emailModalClose = emailDetailModal.querySelector('.modal-close');
+
+  window.handleOpenEmailDetail = (emailId) => {
+    currentDetailEmailId = emailId;
+    const email = window.currentEmails?.find(e => e.id === emailId);
+    if (!email) return;
+
+    document.getElementById('detail-email-from').textContent = email.sender || 'Unknown sender';
+    document.getElementById('detail-email-subject').textContent = email.subject || '(no subject)';
+
+    const date = new Date(email.received_at);
+    const dateStr = date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    document.getElementById('detail-email-date').textContent = dateStr;
+
+    document.getElementById('detail-email-body').textContent = email.body || '(no body)';
+    emailDetailModal.style.display = 'flex';
+  };
+
+  const closeEmailDetail = () => {
+    emailDetailModal.style.display = 'none';
+    currentDetailEmailId = null;
+  };
+
+  emailModalClose.addEventListener('click', closeEmailDetail);
+  document.getElementById('detail-email-close').addEventListener('click', closeEmailDetail);
+  emailDetailModal.addEventListener('click', (e) => {
+    if (e.target === emailDetailModal) closeEmailDetail();
   });
 
   // New task form
