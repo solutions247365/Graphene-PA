@@ -3,7 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { initDb, getDb } from './db.js';
 import { encryptPassword, decryptPassword } from './crypto.js';
-import { authenticateWithTutanota, fetchEmailsFromTutanota, fetchEventsFromTutanota } from './tutanota.js';
+import { authenticateWithTutanota, fetchEmailsFromTutanota, fetchEventsFromTutanota, fetchMessagesFromTutanota } from './tutanota.js';
 
 dotenv.config();
 
@@ -122,6 +122,33 @@ app.get('/api/events', async (req, res) => {
   }
 });
 
+/* ===== message routes ===== */
+
+app.get('/api/messages', async (req, res) => {
+  try {
+    const { email } = req.query;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email query parameter required' });
+    }
+
+    const db = getDb();
+    const messages = await db.all(
+      `SELECT id, phone_number, contact_name, body, is_incoming, sent_at
+       FROM messages
+       WHERE account_email = ?
+       ORDER BY sent_at DESC
+       LIMIT 100`,
+      [email]
+    );
+
+    res.json({ messages });
+  } catch (error) {
+    console.error('Fetch messages error:', error);
+    res.status(500).json({ error: 'Failed to fetch messages' });
+  }
+});
+
 /* ===== sync route ===== */
 
 app.post('/api/sync', async (req, res) => {
@@ -161,10 +188,11 @@ async function syncWithTutanota(email, password) {
     // Authenticate with Tutanota
     await authenticateWithTutanota(email, password);
 
-    // Fetch emails and events
+    // Fetch emails, events, and messages
     await Promise.all([
       fetchEmailsFromTutanota(email),
       fetchEventsFromTutanota(email),
+      fetchMessagesFromTutanota(email),
     ]);
 
     // Update sync timestamp

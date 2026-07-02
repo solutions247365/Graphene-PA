@@ -24,6 +24,9 @@ export async function initIndexedDB() {
       if (!database.objectStoreNames.contains('events')) {
         database.createObjectStore('events', { keyPath: 'id' });
       }
+      if (!database.objectStoreNames.contains('messages')) {
+        database.createObjectStore('messages', { keyPath: 'id' });
+      }
     };
   });
 }
@@ -138,4 +141,38 @@ export async function triggerSync(email) {
   }
 
   return res.json();
+}
+
+export async function fetchMessages(email) {
+  const res = await fetch(`${API_BASE}/api/messages?email=${encodeURIComponent(email)}`);
+
+  if (!res.ok) {
+    throw new Error('Failed to fetch messages');
+  }
+
+  const data = await res.json();
+  const messages = data.messages || [];
+
+  // Cache in IndexedDB
+  const database = getDb();
+  const tx = database.transaction('messages', 'readwrite');
+  const store = tx.objectStore('messages');
+
+  for (const msg of messages) {
+    await store.put(msg);
+  }
+
+  return messages;
+}
+
+export async function getCachedMessages() {
+  const database = getDb();
+  const tx = database.transaction('messages', 'readonly');
+  const store = tx.objectStore('messages');
+
+  return new Promise((resolve, reject) => {
+    const request = store.getAll();
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => resolve(request.result);
+  });
 }
