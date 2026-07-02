@@ -362,6 +362,117 @@ svg {
   -webkit-overflow-scrolling: touch;
 }
 
+/* ---- items list (tasks, schedule) --------------------------------------------- */
+
+.items-list {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-4) calc(var(--space-4) + var(--safe-right)) var(--space-4)
+    calc(var(--space-4) + var(--safe-left));
+  gap: var(--space-3);
+}
+
+.item {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  transition: background-color 0.15s ease;
+}
+
+.item:active {
+  background: color-mix(in srgb, var(--color-surface-raised) 80%, var(--color-accent) 20%);
+}
+
+.item-time {
+  font-size: 12px;
+  color: var(--color-text-faint);
+  margin-top: var(--space-2);
+}
+
+.item-title {
+  font-size: 15px;
+  font-weight: 500;
+  margin-bottom: var(--space-1);
+}
+
+.item-subtitle {
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+/* ---- profile --------------------------------------------------------------------- */
+
+.profile-content {
+  padding: var(--space-5) calc(var(--space-4) + var(--safe-right)) var(--space-4)
+    calc(var(--space-4) + var(--safe-left));
+}
+
+.profile-header {
+  display: flex;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+  align-items: center;
+}
+
+.profile-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--color-accent), var(--color-accent-strong));
+  flex: 0 0 auto;
+}
+
+.profile-info h2 {
+  margin: 0 0 var(--space-1) 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.profile-info p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-muted);
+}
+
+.profile-section {
+  margin-bottom: var(--space-5);
+}
+
+.profile-section h3 {
+  margin: 0 0 var(--space-3) 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.profile-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 14px;
+}
+
+.profile-row:last-child {
+  border-bottom: none;
+}
+
+.btn-secondary {
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+}
+
+.btn-secondary:hover,
+.btn-secondary:focus-visible {
+  background: var(--color-border);
+  border-color: var(--color-text-muted);
+}
+
 .chat-log {
   display: flex;
   flex-direction: column;

@@ -74,7 +74,6 @@
 
     <main class="view" id="view-chat">
       <div class="chat-log">
-
         <div class="msg msg-assistant">
           <div class="bubble">Good morning. You have 3 tasks today and one reminder at 2:00 PM.</div>
           <span class="msg-time">9:02 AM</span>
@@ -89,7 +88,41 @@
           <div class="bubble">Call the pharmacy about your prescription refill.</div>
           <span class="msg-time">9:03 AM</span>
         </div>
+      </div>
+    </main>
 
+    <main class="view" id="view-tasks" style="display: none;">
+      <div class="items-list" id="tasks-list"></div>
+    </main>
+
+    <main class="view" id="view-schedule" style="display: none;">
+      <div class="items-list" id="schedule-list"></div>
+    </main>
+
+    <main class="view" id="view-profile" style="display: none;">
+      <div class="profile-content">
+        <div class="profile-header">
+          <div class="profile-avatar"></div>
+          <div class="profile-info">
+            <h2 id="profile-email"></h2>
+            <p id="profile-status"></p>
+          </div>
+        </div>
+        <div class="profile-section">
+          <h3>Account Info</h3>
+          <div class="profile-row">
+            <span>Synced Emails</span>
+            <span id="profile-emails">—</span>
+          </div>
+          <div class="profile-row">
+            <span>Upcoming Events</span>
+            <span id="profile-events">—</span>
+          </div>
+        </div>
+        <div class="profile-section">
+          <h3>Actions</h3>
+          <button class="btn btn-secondary" id="manual-sync-btn">Force Sync</button>
+        </div>
       </div>
     </main>
 
@@ -104,19 +137,19 @@
     </form>
 
     <nav class="tab-bar" aria-label="Primary">
-      <button class="tab-btn is-active" type="button">
+      <button class="tab-btn is-active" type="button" data-view="view-chat">
         <svg viewBox="0 0 24 24" width="22" height="22"><path d="M4 5h16v11H8l-4 4V5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
         <span>Chat</span>
       </button>
-      <button class="tab-btn" type="button">
+      <button class="tab-btn" type="button" data-view="view-tasks">
         <svg viewBox="0 0 24 24" width="22" height="22"><path d="m4 12 4 4 12-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span>Tasks</span>
       </button>
-      <button class="tab-btn" type="button">
+      <button class="tab-btn" type="button" data-view="view-schedule">
         <svg viewBox="0 0 24 24" width="22" height="22"><rect x="3" y="4" width="18" height="17" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 9h18M8 2v4M16 2v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
         <span>Schedule</span>
       </button>
-      <button class="tab-btn" type="button">
+      <button class="tab-btn" type="button" data-view="view-profile">
         <svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="8" r="3.4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5 20c1.2-3.6 4-5.4 7-5.4s5.8 1.8 7 5.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
         <span>Profile</span>
       </button>
@@ -139,6 +172,38 @@
 
   // Initialize IndexedDB on page load
   await initIndexedDB();
+
+  /* ===== tab switching ===== */
+  const tabBtns = document.querySelectorAll('.tab-btn');
+  const views = {
+    'view-chat': document.getElementById('view-chat'),
+    'view-tasks': document.getElementById('view-tasks'),
+    'view-schedule': document.getElementById('view-schedule'),
+    'view-profile': document.getElementById('view-profile'),
+  };
+
+  function switchView(viewId) {
+    Object.values(views).forEach((v) => (v.style.display = 'none'));
+    views[viewId].style.display = 'flex';
+
+    tabBtns.forEach((btn) => {
+      if (btn.getAttribute('data-view') === viewId) {
+        btn.classList.add('is-active');
+      } else {
+        btn.classList.remove('is-active');
+      }
+    });
+  }
+
+  tabBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const viewId = btn.getAttribute('data-view');
+      switchView(viewId);
+      if (viewId === 'view-profile') updateProfileView();
+      if (viewId === 'view-tasks') updateTasksView();
+      if (viewId === 'view-schedule') updateScheduleView();
+    });
+  });
 
   async function updateSyncStatus() {
     try {
@@ -173,6 +238,79 @@
       isSyncing = false;
       syncBtn.disabled = false;
     }
+  }
+
+  async function updateTasksView() {
+    const tasksList = document.getElementById('tasks-list');
+    const events = await getCachedEvents();
+    const now = new Date();
+
+    // Filter to today and upcoming
+    const todayEvents = events
+      .filter((e) => new Date(e.start_time) >= now)
+      .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
+      .slice(0, 10);
+
+    if (todayEvents.length === 0) {
+      tasksList.innerHTML = '<div style="padding: var(--space-5); text-align: center; color: var(--color-text-faint);">No upcoming tasks</div>';
+      return;
+    }
+
+    tasksList.innerHTML = todayEvents
+      .map((e) => {
+        const start = new Date(e.start_time);
+        const time = start.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        return `
+          <div class="item">
+            <div class="item-title">${e.title}</div>
+            <div class="item-subtitle">${e.description || 'Calendar event'}</div>
+            <div class="item-time">${time}</div>
+          </div>
+        `;
+      })
+      .join('');
+  }
+
+  async function updateScheduleView() {
+    const scheduleList = document.getElementById('schedule-list');
+    const events = await getCachedEvents();
+    const now = new Date();
+
+    // Filter to next 30 days
+    const upcoming = events
+      .filter((e) => {
+        const start = new Date(e.start_time);
+        return start >= now && start <= new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      })
+      .sort((a, b) => new Date(a.start_time) - new Date(b.start_time));
+
+    if (upcoming.length === 0) {
+      scheduleList.innerHTML = '<div style="padding: var(--space-5); text-align: center; color: var(--color-text-faint);">No upcoming events</div>';
+      return;
+    }
+
+    scheduleList.innerHTML = upcoming
+      .map((e) => {
+        const start = new Date(e.start_time);
+        const date = start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        const time = start.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        return `
+          <div class="item">
+            <div class="item-title">${e.title}</div>
+            <div class="item-subtitle">${date} at ${time}</div>
+          </div>
+        `;
+      })
+      .join('');
+  }
+
+  async function updateProfileView() {
+    const [emails, events] = await Promise.all([getCachedEmails(), getCachedEvents()]);
+
+    document.getElementById('profile-email').textContent = currentEmail;
+    document.getElementById('profile-status').textContent = 'Connected to Tutanota';
+    document.getElementById('profile-emails').textContent = emails.length;
+    document.getElementById('profile-events').textContent = events.length;
   }
 
   loginForm.addEventListener('submit', async (e) => {
@@ -220,6 +358,8 @@
       syncStatus.classList.remove('is-synced');
     }
   });
+
+  document.getElementById('manual-sync-btn').addEventListener('click', performSync);
 </script>
 </body>
 </html>
