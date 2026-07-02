@@ -508,3 +508,64 @@ function downloadFile(blob, filename) {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+export async function search(email, query) {
+  const res = await fetch(`${API_BASE}/api/search?email=${encodeURIComponent(email)}&q=${encodeURIComponent(query)}`);
+
+  if (!res.ok) {
+    throw new Error('Search failed');
+  }
+
+  return res.json();
+}
+
+export async function searchTasks(email, options = {}) {
+  const params = new URLSearchParams({ email });
+
+  if (options.query) params.append('q', options.query);
+  if (options.completed !== undefined) params.append('completed', options.completed);
+  if (options.dueAfter) params.append('dueAfter', options.dueAfter);
+  if (options.dueBefore) params.append('dueBefore', options.dueBefore);
+  if (options.sort) params.append('sort', options.sort);
+
+  const res = await fetch(`${API_BASE}/api/search/tasks?${params}`);
+
+  if (!res.ok) {
+    throw new Error('Task search failed');
+  }
+
+  return res.json();
+}
+
+export async function searchEmails(email, options = {}) {
+  const params = new URLSearchParams({ email });
+
+  if (options.query) params.append('q', options.query);
+  if (options.isRead !== undefined) params.append('isRead', options.isRead);
+  if (options.fromAfter) params.append('fromAfter', options.fromAfter);
+  if (options.fromBefore) params.append('fromBefore', options.fromBefore);
+
+  const res = await fetch(`${API_BASE}/api/search/emails?${params}`);
+
+  if (!res.ok) {
+    throw new Error('Email search failed');
+  }
+
+  return res.json();
+}
+
+export async function searchEvents(email, options = {}) {
+  const params = new URLSearchParams({ email });
+
+  if (options.query) params.append('q', options.query);
+  if (options.startAfter) params.append('startAfter', options.startAfter);
+  if (options.startBefore) params.append('startBefore', options.startBefore);
+
+  const res = await fetch(`${API_BASE}/api/search/events?${params}`);
+
+  if (!res.ok) {
+    throw new Error('Event search failed');
+  }
+
+  return res.json();
+}

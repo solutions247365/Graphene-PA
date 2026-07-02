@@ -797,6 +797,202 @@ app.get('/api/export/all', async (req, res) => {
   }
 });
 
+/* ===== search routes ===== */
+
+app.get('/api/search', async (req, res) => {
+  try {
+    const { email, q, type } = req.query;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email query parameter required' });
+    }
+
+    const query = (q || '').trim().toLowerCase();
+    const db = getDb();
+
+    let results = {
+      tasks: [],
+      emails: [],
+      events: [],
+    };
+
+    if (!type || type === 'tasks') {
+      results.tasks = await db.all(
+        `SELECT * FROM tasks
+         WHERE account_email = ? AND (
+           LOWER(title) LIKE ? OR
+           LOWER(description) LIKE ?
+         )
+         ORDER BY due_date`,
+        [email, `%${query}%`, `%${query}%`]
+      );
+    }
+
+    if (!type || type === 'emails') {
+      results.emails = await db.all(
+        `SELECT * FROM emails
+         WHERE account_email = ? AND (
+           LOWER(sender) LIKE ? OR
+           LOWER(subject) LIKE ? OR
+           LOWER(body) LIKE ?
+         )
+         ORDER BY received_at DESC`,
+        [email, `%${query}%`, `%${query}%`, `%${query}%`]
+      );
+    }
+
+    if (!type || type === 'events') {
+      results.events = await db.all(
+        `SELECT * FROM events
+         WHERE account_email = ? AND (
+           LOWER(title) LIKE ? OR
+           LOWER(description) LIKE ?
+         )
+         ORDER BY start_time`,
+        [email, `%${query}%`, `%${query}%`]
+      );
+    }
+
+    res.json(results);
+  } catch (error) {
+    console.error('Search error:', error);
+    res.status(500).json({ error: 'Search failed' });
+  }
+});
+
+app.get('/api/search/tasks', async (req, res) => {
+  try {
+    const { email, q, completed, dueAfter, dueBefore, sort } = req.query;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email query parameter required' });
+    }
+
+    const query = (q || '').trim().toLowerCase();
+    const db = getDb();
+
+    let sql = `SELECT * FROM tasks WHERE account_email = ?`;
+    const params = [email];
+
+    if (query) {
+      sql += ` AND (LOWER(title) LIKE ? OR LOWER(description) LIKE ?)`;
+      params.push(`%${query}%`, `%${query}%`);
+    }
+
+    if (completed !== undefined) {
+      sql += ` AND is_completed = ?`;
+      params.push(completed === 'true' ? 1 : 0);
+    }
+
+    if (dueAfter) {
+      sql += ` AND due_date >= ?`;
+      params.push(dueAfter);
+    }
+
+    if (dueBefore) {
+      sql += ` AND due_date <= ?`;
+      params.push(dueBefore);
+    }
+
+    const sortMap = {
+      'due_date': 'due_date ASC',
+      'created': 'created_at DESC',
+      'title': 'title ASC',
+    };
+    const sortClause = sortMap[sort] || 'due_date ASC';
+    sql += ` ORDER BY ${sortClause}`;
+
+    const tasks = await db.all(sql, params);
+    res.json({ tasks });
+  } catch (error) {
+    console.error('Search tasks error:', error);
+    res.status(500).json({ error: 'Failed to search tasks' });
+  }
+});
+
+app.get('/api/search/emails', async (req, res) => {
+  try {
+    const { email, q, isRead, fromAfter, fromBefore } = req.query;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email query parameter required' });
+    }
+
+    const query = (q || '').trim().toLowerCase();
+    const db = getDb();
+
+    let sql = `SELECT * FROM emails WHERE account_email = ?`;
+    const params = [email];
+
+    if (query) {
+      sql += ` AND (LOWER(sender) LIKE ? OR LOWER(subject) LIKE ? OR LOWER(body) LIKE ?)`;
+      params.push(`%${query}%`, `%${query}%`, `%${query}%`);
+    }
+
+    if (isRead !== undefined) {
+      sql += ` AND is_read = ?`;
+      params.push(isRead === 'true' ? 1 : 0);
+    }
+
+    if (fromAfter) {
+      sql += ` AND received_at >= ?`;
+      params.push(fromAfter);
+    }
+
+    if (fromBefore) {
+      sql += ` AND received_at <= ?`;
+      params.push(fromBefore);
+    }
+
+    sql += ` ORDER BY received_at DESC`;
+
+    const emails = await db.all(sql, params);
+    res.json({ emails });
+  } catch (error) {
+    console.error('Search emails error:', error);
+    res.status(500).json({ error: 'Failed to search emails' });
+  }
+});
+
+app.get('/api/search/events', async (req, res) => {
+  try {
+    const { email, q, startAfter, startBefore } = req.query;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email query parameter required' });
+    }
+
+    const query = (q || '').trim().toLowerCase();
+    const db = getDb();
+
+    let sql = `SELECT * FROM events WHERE account_email = ?`;
+    const params = [email];
+
+    if (query) {
+      sql += ` AND (LOWER(title) LIKE ? OR LOWER(description) LIKE ?)`;
+      params.push(`%${query}%`, `%${query}%`);
+    }
+
+    if (startAfter) {
+      sql += ` AND start_time >= ?`;
+      params.push(startAfter);
+    }
+
+    if (startBefore) {
+      sql += ` AND start_time <= ?`;
+      params.push(startBefore);
+    }
+
+    sql += ` ORDER BY start_time`;
+
+    const events = await db.all(sql, params);
+    res.json({ events });
+  } catch (error) {
+    console.error('Search events error:', error);
+    res.status(500).json({ error: 'Failed to search events' });
+  }
+});
+
 /* ===== export helpers ===== */
 
 function tasksToCSV(tasks) {
