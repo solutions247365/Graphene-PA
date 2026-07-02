@@ -160,6 +160,41 @@
       </button>
     </form>
 
+    <!-- Task Detail Modal -->
+    <div class="modal-backdrop" id="task-detail-modal" style="display: none;">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Task Details</h2>
+          <button type="button" class="modal-close" aria-label="Close">×</button>
+        </div>
+        <form id="task-detail-form" class="modal-form">
+          <div class="form-group">
+            <label for="detail-task-title">Title</label>
+            <input type="text" id="detail-task-title" required />
+          </div>
+          <div class="form-group">
+            <label for="detail-task-desc">Description</label>
+            <textarea id="detail-task-desc" rows="4"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="detail-task-date">Due Date</label>
+            <input type="date" id="detail-task-date" />
+          </div>
+          <div class="form-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="detail-task-complete" />
+              <span>Mark as complete</span>
+            </label>
+          </div>
+          <div class="modal-actions">
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+            <button type="button" class="btn btn-secondary" id="detail-task-delete">Delete Task</button>
+            <button type="button" class="btn btn-tertiary" id="detail-task-cancel">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <nav class="tab-bar" aria-label="Primary">
       <button class="tab-btn is-active" type="button" data-view="view-chat">
         <svg viewBox="0 0 24 24" width="22" height="22"><path d="M4 5h16v11H8l-4 4V5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
@@ -301,22 +336,22 @@
               ? new Date(task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
               : null;
             return `
-              <div class="task-item ${task.is_completed ? 'completed' : ''}">
+              <div class="task-item ${task.is_completed ? 'completed' : ''}" onclick="handleOpenTaskDetail('${task.id}')">
                 <input type="checkbox" class="task-checkbox" ${task.is_completed ? 'checked' : ''}
-                  onchange="handleTaskToggle('${task.id}', this.checked)">
+                  onchange="event.stopPropagation(); handleTaskToggle('${task.id}', this.checked)">
                 <div class="task-content">
                   <div class="task-title">${task.title}</div>
                   ${task.description ? `<div class="task-desc">${task.description}</div>` : ''}
                   ${dueDate ? `<div class="task-date">Due ${dueDate}</div>` : ''}
-                </div>
-                <div class="task-actions">
-                  <button class="task-delete" onclick="handleTaskDelete('${task.id}')">×</button>
                 </div>
               </div>
             `;
           })
           .join('');
       }
+
+      // Store tasks for detail view
+      window.currentTasks = tasks;
 
       // Render suggestions
       const suggestionsList = document.getElementById('suggestions-list');
@@ -536,6 +571,71 @@
     currentSuggestions.splice(idx, 1);
     updateTasksView();
   };
+
+  // Task detail modal handlers
+  let currentDetailTaskId = null;
+  const taskDetailModal = document.getElementById('task-detail-modal');
+  const taskDetailForm = document.getElementById('task-detail-form');
+  const modalClose = taskDetailModal.querySelector('.modal-close');
+
+  window.handleOpenTaskDetail = (taskId) => {
+    currentDetailTaskId = taskId;
+    const task = window.currentTasks?.find(t => t.id === taskId);
+    if (!task) return;
+
+    document.getElementById('detail-task-title').value = task.title || '';
+    document.getElementById('detail-task-desc').value = task.description || '';
+    document.getElementById('detail-task-date').value = task.due_date || '';
+    document.getElementById('detail-task-complete').checked = !!task.is_completed;
+
+    taskDetailModal.style.display = 'flex';
+  };
+
+  const closeTaskDetail = () => {
+    taskDetailModal.style.display = 'none';
+    currentDetailTaskId = null;
+  };
+
+  modalClose.addEventListener('click', closeTaskDetail);
+  document.getElementById('detail-task-cancel').addEventListener('click', closeTaskDetail);
+
+  taskDetailModal.addEventListener('click', (e) => {
+    if (e.target === taskDetailModal) closeTaskDetail();
+  });
+
+  taskDetailForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!currentDetailTaskId) return;
+
+    try {
+      const updates = {
+        title: document.getElementById('detail-task-title').value,
+        description: document.getElementById('detail-task-desc').value,
+        due_date: document.getElementById('detail-task-date').value || null,
+        is_completed: document.getElementById('detail-task-complete').checked ? 1 : 0,
+      };
+      await updateTask(currentDetailTaskId, updates);
+      closeTaskDetail();
+      await updateTasksView();
+    } catch (error) {
+      console.error('Error saving task:', error);
+      alert('Failed to save task');
+    }
+  });
+
+  document.getElementById('detail-task-delete').addEventListener('click', async () => {
+    if (!currentDetailTaskId) return;
+    if (!confirm('Delete this task? This cannot be undone.')) return;
+
+    try {
+      await deleteTask(currentDetailTaskId);
+      closeTaskDetail();
+      await updateTasksView();
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      alert('Failed to delete task');
+    }
+  });
 
   // New task form
   document.getElementById('new-task-form').addEventListener('submit', async (e) => {
