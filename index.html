@@ -928,7 +928,7 @@
       showNotification('Settings saved', 'Your preferences have been updated', 'success');
     } catch (error) {
       console.error('Error saving settings:', error);
-      showNotification('Error', 'Failed to save settings', 'warning');
+      showNotification('Error', 'Failed to save settings', 'error');
     }
   });
 
@@ -951,7 +951,7 @@
         showNotification('Settings reset', 'Preferences restored to defaults', 'success');
       } catch (error) {
         console.error('Error resetting settings:', error);
-        showNotification('Error', 'Failed to reset settings', 'warning');
+        showNotification('Error', 'Failed to reset settings', 'error');
       }
     }
   });
@@ -964,7 +964,7 @@
       showNotification('Export complete', 'Tasks exported to CSV', 'success');
     } catch (error) {
       console.error('Error exporting tasks:', error);
-      showNotification('Error', 'Failed to export tasks', 'warning');
+      showNotification('Error', 'Failed to export tasks', 'error');
     }
   });
 
@@ -975,7 +975,7 @@
       showNotification('Export complete', 'Emails exported to CSV', 'success');
     } catch (error) {
       console.error('Error exporting emails:', error);
-      showNotification('Error', 'Failed to export emails', 'warning');
+      showNotification('Error', 'Failed to export emails', 'error');
     }
   });
 
@@ -986,7 +986,7 @@
       showNotification('Export complete', 'Events exported to CSV', 'success');
     } catch (error) {
       console.error('Error exporting events:', error);
-      showNotification('Error', 'Failed to export events', 'warning');
+      showNotification('Error', 'Failed to export events', 'error');
     }
   });
 
@@ -997,7 +997,7 @@
       showNotification('Backup complete', 'Full data backed up', 'success');
     } catch (error) {
       console.error('Error exporting data:', error);
-      showNotification('Error', 'Failed to create backup', 'warning');
+      showNotification('Error', 'Failed to create backup', 'error');
     }
   });
 
@@ -1182,6 +1182,7 @@
 
     const icons = {
       success: '✓',
+      error: '✕',
       warning: '⚠',
       info: 'ℹ',
     };
