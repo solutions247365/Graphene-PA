@@ -536,7 +536,7 @@
 </div>
 
 <script type="module">
-  import { initIndexedDB, loginWithTutanota, logoutFromTutanota, fetchEmails, fetchEvents, getCachedEmails, getCachedEvents, triggerSync, fetchMessages, getCachedMessages, fetchTasks, fetchTaskSuggestions, createNewTask, acceptTaskSuggestion, updateTask, deleteTask, createRecurringTask, getRecurringTasks, getTaskTemplates, createTaskTemplate, deleteTaskTemplate, useTaskTemplate, getPreferences, updatePreferences, exportTasks, exportEmails, exportEvents, exportAll, search, searchTasks, searchEmails, searchEvents } from './client.js';
+  import { initIndexedDB, loginWithTutanota, logoutFromTutanota, fetchEmails, fetchEvents, getCachedEmails, getCachedEvents, triggerSync, fetchMessages, getCachedMessages, fetchTasks, getCachedTasks, fetchTaskSuggestions, createNewTask, acceptTaskSuggestion, updateTask, deleteTask, createRecurringTask, getRecurringTasks, getTaskTemplates, createTaskTemplate, deleteTaskTemplate, useTaskTemplate, getPreferences, updatePreferences, exportTasks, exportEmails, exportEvents, exportAll, search, searchTasks, searchEmails, searchEvents } from './client.js';
 
   const loginForm = document.getElementById('login-form');
   const viewLogin = document.getElementById('view-login');
@@ -1664,11 +1664,11 @@
   }
 
   // Patch updateTasksView to store suggestions globally for handlers and load templates
-  const originalUpdateTasksView = updateTasksView;
+  const notificationPatchedUpdateTasksView = updateTasksView;
   updateTasksView = async function() {
     const suggestionsRes = await fetchTaskSuggestions(currentEmail);
     currentSuggestions = suggestionsRes.suggestions || [];
-    const result = await originalUpdateTasksView.call(this);
+    const result = await notificationPatchedUpdateTasksView.call(this);
     await updateTemplatesList();
     return result;
   };
