@@ -575,15 +575,24 @@
     }, 2600);
   }
 
-  /* ---- sync from email (honest until a mailbox is connected) ------------- */
+  // Shared so other modules (e.g. gmail.js) can surface the same toast.
+  window.GraphenePA = window.GraphenePA || {};
+  window.GraphenePA.toast = toast;
+
+  /* ---- sync from email -------------------------------------------------- */
 
   Array.prototype.slice.call(document.querySelectorAll('[data-sync]')).forEach(function (btn) {
     btn.addEventListener('click', function () {
+      var gmail = window.GraphenePA && window.GraphenePA.gmail;
+      if (gmail && gmail.state && gmail.state()) {
+        gmail.sync(btn.getAttribute('data-sync'), btn);
+        return;
+      }
       btn.setAttribute('aria-busy', 'true');
       window.setTimeout(function () {
         btn.removeAttribute('aria-busy');
-        toast('No email account is connected yet — set one up to sync automatically.');
-      }, 600);
+        toast('Connect Gmail in Profile to sync your email.');
+      }, 500);
     });
   });
 

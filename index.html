@@ -7,7 +7,9 @@
 <meta name="theme-color" content="#070708">
 <title>Graphene PA</title>
 <link rel="stylesheet" href="style.css">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="app.js" defer></script>
+<script src="gmail.js" defer></script>
 </head>
 <body>
 
@@ -90,6 +92,10 @@
         <span class="row-label">Email account</span>
         <span class="row-value" id="email-status">Not connected</span>
       </div>
+      <button class="row row-btn" type="button" id="gmail-action">
+        <span class="row-label" id="gmail-action-label">Connect Gmail</span>
+        <span class="row-chevron" aria-hidden="true">›</span>
+      </button>
       <button class="row row-btn" type="button" id="lock-now">
         <span class="row-label">Lock app</span>
         <span class="row-chevron" aria-hidden="true">›</span>
