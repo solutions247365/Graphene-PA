@@ -276,6 +276,47 @@ svg {
   padding: 0 var(--space-1);
 }
 
+/* typing indicator */
+
+.bubble-typing {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.bubble-typing span {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: var(--color-text-muted);
+  animation: typing-bounce 1.2s infinite ease-in-out;
+}
+
+.bubble-typing span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.bubble-typing span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes typing-bounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bubble-typing span {
+    animation: none;
+  }
+}
+
 /* ---- composer -------------------------------------------------------------- */
 
 .composer {

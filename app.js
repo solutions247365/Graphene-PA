@@ -275,3 +275,96 @@
 
   setMode(readStore() ? 'verify' : 'create');
 })();
+
+/* ==========================================================================
+   Graphene PA — chat composer
+   Posts what you type into the chat log. No assistant backend is wired up
+   yet, so the first message gets a single honest notice rather than a
+   fabricated reply. Messages live in memory only (cleared on reload).
+   ========================================================================== */
+
+(function () {
+  var form = document.getElementById('composer');
+  var input = form && form.querySelector('.composer-input');
+  var log = document.getElementById('chat-log');
+  var empty = document.getElementById('chat-empty');
+  var view = document.getElementById('view-chat');
+
+  if (!form || !input || !log) return;
+
+  var noticed = false;
+
+  function timeLabel() {
+    var d = new Date();
+    var h = d.getHours();
+    var m = d.getMinutes();
+    var ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12;
+    if (h === 0) h = 12;
+    return h + ':' + (m < 10 ? '0' + m : m) + ' ' + ampm;
+  }
+
+  function scrollToEnd() {
+    if (view) view.scrollTop = view.scrollHeight;
+  }
+
+  function appendMessage(role, text) {
+    if (empty) empty.setAttribute('hidden', '');
+
+    var msg = document.createElement('div');
+    msg.className = 'msg msg-' + role;
+
+    var bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.textContent = text; // textContent — never interpret input as HTML
+
+    var time = document.createElement('span');
+    time.className = 'msg-time';
+    time.textContent = timeLabel();
+
+    msg.appendChild(bubble);
+    msg.appendChild(time);
+    log.appendChild(msg);
+    scrollToEnd();
+  }
+
+  function showTyping() {
+    var msg = document.createElement('div');
+    msg.className = 'msg msg-assistant';
+
+    var bubble = document.createElement('div');
+    bubble.className = 'bubble bubble-typing';
+    bubble.setAttribute('aria-label', 'Assistant is typing');
+    bubble.appendChild(document.createElement('span'));
+    bubble.appendChild(document.createElement('span'));
+    bubble.appendChild(document.createElement('span'));
+
+    msg.appendChild(bubble);
+    log.appendChild(msg);
+    scrollToEnd();
+    return msg;
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var text = input.value.trim();
+    if (!text) return;
+
+    appendMessage('user', text);
+    input.value = '';
+    input.focus();
+
+    // One-time, honest acknowledgement — not a simulated assistant.
+    if (!noticed) {
+      noticed = true;
+      var typing = showTyping();
+      window.setTimeout(function () {
+        if (typing.parentNode) typing.parentNode.removeChild(typing);
+        appendMessage(
+          'assistant',
+          'Assistant isn’t connected yet — this is an early preview. Your messages stay on your device for now.'
+        );
+      }, 700);
+    }
+  });
+})();
