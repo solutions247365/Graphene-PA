@@ -54,36 +54,13 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
+
+  /* Force dark UA rendering (controls, scrollbars, caret) — never light. */
+  color-scheme: dark;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    /* Platinum/silver light surfaces; accent deepens to gold so it stays
-       legible as both a fill and a foreground on white. */
-    --color-bg: #ecedef;
-    --color-surface: #fafbfb;
-    --color-surface-raised: #e2e4e7;
-    --color-border: #d0d3d6;
-
-    --color-text: #17181a;
-    --color-text-muted: #565a5f;
-    --color-text-faint: #868b90;
-
-    --color-silver: #8b9096;
-    --color-platinum: #c8ccd0;
-
-    --color-accent: #caa000;
-    --color-accent-strong: #a37f00;
-    --color-accent-contrast: #100d02;
-
-    --color-danger: #d64545;
-
-    --color-user-bubble: var(--color-accent);
-    --color-user-text: #100d02;
-    --color-assistant-bubble: var(--color-surface-raised);
-    --color-assistant-text: var(--color-text);
-  }
-}
+/* Graphene commits to a single dark, near-black visual world — the palette
+   above applies regardless of the device's light/dark setting. */
 
 /* ---- reset ------------------------------------------------------------- */
 
