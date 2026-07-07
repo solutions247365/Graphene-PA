@@ -5,8 +5,36 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Graphene PA</title>
 <link rel="stylesheet" href="style.css">
+<script src="app.js" defer></script>
 </head>
 <body>
+
+<div class="lock" id="lock" role="dialog" aria-modal="true"
+     aria-labelledby="lock-title" aria-describedby="lock-hint">
+  <div class="lock-inner">
+    <span class="brand-mark lock-mark" aria-hidden="true"></span>
+    <h1 class="lock-title" id="lock-title">Enter PIN</h1>
+    <p class="lock-hint" id="lock-hint">Unlock Graphene PA</p>
+    <div class="pin-dots" id="pin-dots" aria-hidden="true"></div>
+    <p class="lock-error" id="lock-error" role="alert" aria-live="assertive"></p>
+    <div class="keypad" id="keypad">
+      <button class="key" type="button" data-key="1">1</button>
+      <button class="key" type="button" data-key="2">2</button>
+      <button class="key" type="button" data-key="3">3</button>
+      <button class="key" type="button" data-key="4">4</button>
+      <button class="key" type="button" data-key="5">5</button>
+      <button class="key" type="button" data-key="6">6</button>
+      <button class="key" type="button" data-key="7">7</button>
+      <button class="key" type="button" data-key="8">8</button>
+      <button class="key" type="button" data-key="9">9</button>
+      <button class="key key-action" type="button" data-key="del" aria-label="Delete">⌫</button>
+      <button class="key" type="button" data-key="0">0</button>
+      <button class="key key-action key-ok" type="button" data-key="ok" aria-label="Confirm">✓</button>
+    </div>
+    <noscript><p class="lock-hint">JavaScript is required to unlock.</p></noscript>
+  </div>
+</div>
+
 <div class="app">
 
   <header class="app-header">

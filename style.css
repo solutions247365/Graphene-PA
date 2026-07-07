@@ -18,6 +18,8 @@
   --color-accent-strong: #22b39f;
   --color-accent-contrast: #04211d;
 
+  --color-danger: #ff6b6b;
+
   --color-user-bubble: var(--color-accent);
   --color-user-text: #04211d;
   --color-assistant-bubble: var(--color-surface-raised);
@@ -64,6 +66,8 @@
     --color-accent: #0f9d8a;
     --color-accent-strong: #0c8071;
     --color-accent-contrast: #ffffff;
+
+    --color-danger: #d64545;
 
     --color-user-bubble: var(--color-accent);
     --color-user-text: #ffffff;
@@ -388,10 +392,148 @@ svg {
   }
 }
 
+/* ---- lock screen -----------------------------------------------------------
+   Device-local PIN gate shown over everything until unlocked. Opaque, so the
+   app never flashes behind it before the script runs.
+   ------------------------------------------------------------------------ */
+
+.lock {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg);
+  padding: calc(var(--space-5) + var(--safe-top))
+    calc(var(--space-5) + var(--safe-right))
+    calc(var(--space-5) + var(--safe-bottom))
+    calc(var(--space-5) + var(--safe-left));
+}
+
+.lock[hidden] {
+  display: none;
+}
+
+.lock-inner {
+  width: 100%;
+  max-width: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-4);
+}
+
+.lock-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+}
+
+.lock-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.lock-hint {
+  margin: calc(var(--space-3) * -1) 0 0;
+  font-size: 14px;
+  color: var(--color-text-muted);
+}
+
+.pin-dots {
+  display: flex;
+  gap: var(--space-3);
+  min-height: 14px;
+  align-items: center;
+}
+
+.pin-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: var(--radius-pill);
+  border: 1.5px solid var(--color-text-faint);
+  transition: background-color 0.12s ease, border-color 0.12s ease,
+    transform 0.12s ease;
+}
+
+.pin-dot.is-filled {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  transform: scale(1.08);
+}
+
+.lock-error {
+  margin: 0;
+  min-height: 18px;
+  font-size: 13px;
+  color: var(--color-danger);
+}
+
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.key {
+  height: 60px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  font-size: 22px;
+  font-weight: 500;
+  transition: background-color 0.12s ease, transform 0.08s ease;
+}
+
+.key:hover {
+  background: var(--color-surface);
+}
+
+.key:active {
+  transform: scale(0.96);
+}
+
+.key:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.key-action {
+  color: var(--color-text-muted);
+}
+
+.key-ok {
+  color: var(--color-accent);
+}
+
+@keyframes lock-shake {
+  10%, 90% { transform: translateX(-1px); }
+  20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-5px); }
+  40%, 60% { transform: translateX(5px); }
+}
+
+.pin-dots.is-error {
+  animation: lock-shake 0.4s ease;
+}
+
 /* ---- reduced motion --------------------------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {
   * {
     transition-duration: 0.001ms !important;
+  }
+
+  .pin-dots.is-error {
+    animation: none;
   }
 }
