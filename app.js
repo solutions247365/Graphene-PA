@@ -273,6 +273,13 @@
     }
   });
 
+  // Allow other modules (e.g. Profile → Lock app) to re-engage the lock.
+  window.GraphenePA = window.GraphenePA || {};
+  window.GraphenePA.lock = function () {
+    setMode(readStore() ? 'verify' : 'create');
+    lockEl.removeAttribute('hidden');
+  };
+
   setMode(readStore() ? 'verify' : 'create');
 })();
 
@@ -367,4 +374,227 @@
       }, 700);
     }
   });
+})();
+
+/* ==========================================================================
+   Graphene PA — navigation, screens, and email sync
+   Tab switching between Chat / Tasks / Schedule / Profile, plus rendering of
+   tasks and schedule from a data model. Extracted email items can be injected
+   via GraphenePA.setTasks / setSchedule once a mailbox is connected.
+   ========================================================================== */
+
+(function () {
+  var app = document.getElementById('app');
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('.tab-btn'));
+  var TABS = ['chat', 'tasks', 'schedule', 'profile'];
+
+  if (!app || !tabs.length) return;
+
+  function selectTab(name) {
+    if (TABS.indexOf(name) === -1) return;
+    app.setAttribute('data-tab', name);
+    tabs.forEach(function (t) {
+      var active = t.getAttribute('data-tab') === name;
+      t.classList.toggle('is-active', active);
+      t.setAttribute('aria-current', active ? 'page' : 'false');
+    });
+    TABS.forEach(function (n) {
+      var v = document.getElementById('view-' + n);
+      if (!v) return;
+      if (n === name) v.removeAttribute('hidden');
+      else v.setAttribute('hidden', '');
+    });
+    var view = document.getElementById('view-' + name);
+    if (view) view.scrollTop = 0;
+  }
+
+  tabs.forEach(function (t) {
+    t.addEventListener('click', function () {
+      selectTab(t.getAttribute('data-tab'));
+    });
+  });
+
+  /* ---- data + rendering ------------------------------------------------- */
+
+  var data = { tasks: [], schedule: [] };
+
+  var CHECK_SVG =
+    '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">' +
+    '<path d="m4 12 5 5 11-11" fill="none" stroke="currentColor" stroke-width="2.4" ' +
+    'stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+  function renderTasks() {
+    var list = document.getElementById('task-list');
+    var empty = document.getElementById('tasks-empty');
+    if (!list) return;
+    list.innerHTML = '';
+
+    if (!data.tasks.length) {
+      if (empty) empty.removeAttribute('hidden');
+      return;
+    }
+    if (empty) empty.setAttribute('hidden', '');
+
+    data.tasks.forEach(function (task) {
+      var li = document.createElement('li');
+      li.className = 'task-item' + (task.done ? ' is-done' : '');
+
+      var check = document.createElement('button');
+      check.type = 'button';
+      check.className = 'task-check';
+      check.setAttribute('aria-label', task.done ? 'Mark not done' : 'Mark done');
+      check.innerHTML = CHECK_SVG;
+      check.addEventListener('click', function () {
+        task.done = !task.done;
+        renderTasks();
+      });
+
+      var body = document.createElement('div');
+      body.className = 'task-body';
+
+      var title = document.createElement('span');
+      title.className = 'task-title';
+      title.textContent = task.title;
+      body.appendChild(title);
+
+      if (task.due || task.source) {
+        var meta = document.createElement('span');
+        meta.className = 'task-meta';
+        if (task.due) {
+          var d = document.createElement('span');
+          d.textContent = task.due;
+          meta.appendChild(d);
+        }
+        if (task.source) {
+          var s = document.createElement('span');
+          s.className = 'task-source';
+          s.textContent = 'from ' + task.source;
+          meta.appendChild(s);
+        }
+        body.appendChild(meta);
+      }
+
+      li.appendChild(check);
+      li.appendChild(body);
+      list.appendChild(li);
+    });
+  }
+
+  function renderSchedule() {
+    var agenda = document.getElementById('agenda');
+    var empty = document.getElementById('schedule-empty');
+    if (!agenda) return;
+    agenda.innerHTML = '';
+
+    if (!data.schedule.length) {
+      if (empty) empty.removeAttribute('hidden');
+      return;
+    }
+    if (empty) empty.setAttribute('hidden', '');
+
+    var groups = {};
+    var order = [];
+    data.schedule.forEach(function (ev) {
+      if (!groups[ev.day]) {
+        groups[ev.day] = [];
+        order.push(ev.day);
+      }
+      groups[ev.day].push(ev);
+    });
+
+    order.forEach(function (day) {
+      var g = document.createElement('div');
+      g.className = 'agenda-day';
+
+      var h = document.createElement('div');
+      h.className = 'agenda-date';
+      h.textContent = day;
+      g.appendChild(h);
+
+      groups[day].forEach(function (ev) {
+        var e = document.createElement('div');
+        e.className = 'event';
+
+        var time = document.createElement('div');
+        time.className = 'event-time';
+        time.textContent = ev.time || 'All day';
+
+        var b = document.createElement('div');
+        b.className = 'event-body';
+
+        var t = document.createElement('div');
+        t.className = 'event-title';
+        t.textContent = ev.title;
+        b.appendChild(t);
+
+        if (ev.location) {
+          var m = document.createElement('div');
+          m.className = 'event-meta';
+          m.textContent = ev.location;
+          b.appendChild(m);
+        }
+
+        e.appendChild(time);
+        e.appendChild(b);
+        g.appendChild(e);
+      });
+
+      agenda.appendChild(g);
+    });
+  }
+
+  // Injection points for real extracted email data (used once a mailbox is wired).
+  window.GraphenePA = window.GraphenePA || {};
+  window.GraphenePA.setTasks = function (arr) {
+    data.tasks = Array.isArray(arr) ? arr : [];
+    renderTasks();
+  };
+  window.GraphenePA.setSchedule = function (arr) {
+    data.schedule = Array.isArray(arr) ? arr : [];
+    renderSchedule();
+  };
+
+  renderTasks();
+  renderSchedule();
+
+  /* ---- transient toast -------------------------------------------------- */
+
+  function toast(msg) {
+    var el = document.createElement('div');
+    el.className = 'toast';
+    el.setAttribute('role', 'status');
+    el.textContent = msg;
+    document.body.appendChild(el);
+    void el.offsetWidth; // reflow so the transition runs
+    el.classList.add('is-shown');
+    window.setTimeout(function () {
+      el.classList.remove('is-shown');
+      window.setTimeout(function () {
+        if (el.parentNode) el.parentNode.removeChild(el);
+      }, 250);
+    }, 2600);
+  }
+
+  /* ---- sync from email (honest until a mailbox is connected) ------------- */
+
+  Array.prototype.slice.call(document.querySelectorAll('[data-sync]')).forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      btn.setAttribute('aria-busy', 'true');
+      window.setTimeout(function () {
+        btn.removeAttribute('aria-busy');
+        toast('No email account is connected yet — set one up to sync automatically.');
+      }, 600);
+    });
+  });
+
+  /* ---- profile: lock now ------------------------------------------------ */
+
+  var lockBtn = document.getElementById('lock-now');
+  if (lockBtn) {
+    lockBtn.addEventListener('click', function () {
+      if (window.GraphenePA && typeof window.GraphenePA.lock === 'function') {
+        window.GraphenePA.lock();
+      }
+    });
+  }
 })();
