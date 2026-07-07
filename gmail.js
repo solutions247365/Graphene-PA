@@ -18,7 +18,7 @@
    ========================================================================== */
 
 (function () {
-  var GMAIL_CLIENT_ID = ''; // ← paste your Google OAuth Web client ID here
+  var GMAIL_CLIENT_ID = '171493719119-rf7flsghk1hraq44fm56ut0lfgbnlclj.apps.googleusercontent.com';
   var SCOPES = 'https://www.googleapis.com/auth/gmail.readonly';
   var STORE_KEY = 'graphenePA.gmail.v1';
   var FETCH_QUERY = 'newer_than:30d -category:promotions -in:chats';
