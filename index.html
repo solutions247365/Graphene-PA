@@ -48,23 +48,10 @@
   </header>
 
   <main class="view" id="view-chat">
-    <div class="chat-log">
-
-      <div class="msg msg-assistant">
-        <div class="bubble">Good morning. You have 3 tasks today and one reminder at 2:00 PM.</div>
-        <span class="msg-time">9:02 AM</span>
-      </div>
-
-      <div class="msg msg-user">
-        <div class="bubble">What's the reminder?</div>
-        <span class="msg-time">9:02 AM</span>
-      </div>
-
-      <div class="msg msg-assistant">
-        <div class="bubble">Call the pharmacy about your prescription refill.</div>
-        <span class="msg-time">9:03 AM</span>
-      </div>
-
+    <div class="chat-log" id="chat-log"></div>
+    <div class="chat-empty" id="chat-empty">
+      <span class="brand-mark chat-empty-mark" aria-hidden="true"></span>
+      <p class="chat-empty-text">Ask your assistant anything to get started.</p>
     </div>
   </main>
 
