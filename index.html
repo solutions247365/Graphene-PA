@@ -3,11 +3,43 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#070708">
 <title>Graphene PA</title>
 <link rel="stylesheet" href="style.css">
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="app.js" defer></script>
+<script src="gmail.js" defer></script>
 </head>
 <body>
-<div class="app">
+
+<div class="lock" id="lock" role="dialog" aria-modal="true"
+     aria-labelledby="lock-title" aria-describedby="lock-hint">
+  <div class="lock-inner">
+    <span class="brand-mark lock-mark" aria-hidden="true"></span>
+    <h1 class="lock-title" id="lock-title">Enter PIN</h1>
+    <p class="lock-hint" id="lock-hint">Unlock Graphene PA</p>
+    <div class="pin-dots" id="pin-dots" aria-hidden="true"></div>
+    <p class="lock-error" id="lock-error" role="alert" aria-live="assertive"></p>
+    <div class="keypad" id="keypad">
+      <button class="key" type="button" data-key="1">1</button>
+      <button class="key" type="button" data-key="2">2</button>
+      <button class="key" type="button" data-key="3">3</button>
+      <button class="key" type="button" data-key="4">4</button>
+      <button class="key" type="button" data-key="5">5</button>
+      <button class="key" type="button" data-key="6">6</button>
+      <button class="key" type="button" data-key="7">7</button>
+      <button class="key" type="button" data-key="8">8</button>
+      <button class="key" type="button" data-key="9">9</button>
+      <button class="key key-action" type="button" data-key="del" aria-label="Delete">⌫</button>
+      <button class="key" type="button" data-key="0">0</button>
+      <button class="key key-action key-ok" type="button" data-key="ok" aria-label="Confirm">✓</button>
+    </div>
+    <noscript><p class="lock-hint">JavaScript is required to unlock.</p></noscript>
+  </div>
+</div>
+
+<div class="app" id="app" data-tab="chat">
 
   <header class="app-header">
     <div class="brand">
@@ -19,24 +51,55 @@
     </button>
   </header>
 
-  <main class="view" id="view-chat">
-    <div class="chat-log">
+  <main class="view" id="view-chat" aria-label="Chat">
+    <div class="chat-log" id="chat-log"></div>
+    <div class="chat-empty" id="chat-empty">
+      <span class="brand-mark chat-empty-mark" aria-hidden="true"></span>
+      <p class="chat-empty-text">Ask your assistant anything to get started.</p>
+    </div>
+  </main>
 
-      <div class="msg msg-assistant">
-        <div class="bubble">Good morning. You have 3 tasks today and one reminder at 2:00 PM.</div>
-        <span class="msg-time">9:02 AM</span>
+  <main class="view screen" id="view-tasks" aria-label="Tasks" hidden>
+    <div class="screen-head">
+      <h1 class="screen-title">Tasks</h1>
+      <button class="pill-btn" type="button" data-sync="tasks">Sync from email</button>
+    </div>
+    <ul class="task-list" id="task-list"></ul>
+    <div class="screen-empty" id="tasks-empty">
+      <p class="screen-empty-text">No tasks yet</p>
+      <p class="screen-empty-sub">Sync your email to pull action items in automatically.</p>
+    </div>
+  </main>
+
+  <main class="view screen" id="view-schedule" aria-label="Schedule" hidden>
+    <div class="screen-head">
+      <h1 class="screen-title">Schedule</h1>
+      <button class="pill-btn" type="button" data-sync="schedule">Sync calendar</button>
+    </div>
+    <div class="agenda" id="agenda"></div>
+    <div class="screen-empty" id="schedule-empty">
+      <p class="screen-empty-text">Nothing scheduled</p>
+      <p class="screen-empty-sub">Sync your email to pull events and appointments in.</p>
+    </div>
+  </main>
+
+  <main class="view screen" id="view-profile" aria-label="Profile" hidden>
+    <div class="screen-head">
+      <h1 class="screen-title">Profile</h1>
+    </div>
+    <div class="card-list">
+      <div class="row">
+        <span class="row-label">Google account</span>
+        <span class="row-value" id="email-status">Not connected</span>
       </div>
-
-      <div class="msg msg-user">
-        <div class="bubble">What's the reminder?</div>
-        <span class="msg-time">9:02 AM</span>
-      </div>
-
-      <div class="msg msg-assistant">
-        <div class="bubble">Call the pharmacy about your prescription refill.</div>
-        <span class="msg-time">9:03 AM</span>
-      </div>
-
+      <button class="row row-btn" type="button" id="gmail-action">
+        <span class="row-label" id="gmail-action-label">Connect Google</span>
+        <span class="row-chevron" aria-hidden="true">›</span>
+      </button>
+      <button class="row row-btn" type="button" id="lock-now">
+        <span class="row-label">Lock app</span>
+        <span class="row-chevron" aria-hidden="true">›</span>
+      </button>
     </div>
   </main>
 
@@ -51,19 +114,19 @@
   </form>
 
   <nav class="tab-bar" aria-label="Primary">
-    <button class="tab-btn is-active" type="button">
+    <button class="tab-btn is-active" type="button" data-tab="chat" aria-label="Chat">
       <svg viewBox="0 0 24 24" width="22" height="22"><path d="M4 5h16v11H8l-4 4V5Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
       <span>Chat</span>
     </button>
-    <button class="tab-btn" type="button">
+    <button class="tab-btn" type="button" data-tab="tasks" aria-label="Tasks">
       <svg viewBox="0 0 24 24" width="22" height="22"><path d="m4 12 4 4 12-12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span>Tasks</span>
     </button>
-    <button class="tab-btn" type="button">
+    <button class="tab-btn" type="button" data-tab="schedule" aria-label="Schedule">
       <svg viewBox="0 0 24 24" width="22" height="22"><rect x="3" y="4" width="18" height="17" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 9h18M8 2v4M16 2v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
       <span>Schedule</span>
     </button>
-    <button class="tab-btn" type="button">
+    <button class="tab-btn" type="button" data-tab="profile" aria-label="Profile">
       <svg viewBox="0 0 24 24" width="22" height="22"><circle cx="12" cy="8" r="3.4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5 20c1.2-3.6 4-5.4 7-5.4s5.8 1.8 7 5.4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
       <span>Profile</span>
     </button>
