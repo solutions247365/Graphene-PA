@@ -583,15 +583,17 @@
 
   Array.prototype.slice.call(document.querySelectorAll('[data-sync]')).forEach(function (btn) {
     btn.addEventListener('click', function () {
-      var gmail = window.GraphenePA && window.GraphenePA.gmail;
-      if (gmail && gmail.state && gmail.state()) {
-        gmail.sync(btn.getAttribute('data-sync'), btn);
+      var which = btn.getAttribute('data-sync');
+      var g = window.GraphenePA && window.GraphenePA.gmail;
+      if (g && g.state && g.state()) {
+        if (which === 'schedule' && g.syncCalendar) g.syncCalendar(btn);
+        else g.sync(which, btn);
         return;
       }
       btn.setAttribute('aria-busy', 'true');
       window.setTimeout(function () {
         btn.removeAttribute('aria-busy');
-        toast('Connect Gmail in Profile to sync your email.');
+        toast('Connect your Google account in Profile to sync.');
       }, 500);
     });
   });

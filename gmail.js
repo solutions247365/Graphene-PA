@@ -19,7 +19,9 @@
 
 (function () {
   var GMAIL_CLIENT_ID = '171493719119-rf7flsghk1hraq44fm56ut0lfgbnlclj.apps.googleusercontent.com';
-  var SCOPES = 'https://www.googleapis.com/auth/gmail.readonly';
+  var SCOPES =
+    'https://www.googleapis.com/auth/gmail.readonly ' +
+    'https://www.googleapis.com/auth/calendar.readonly';
   var STORE_KEY = 'graphenePA.gmail.v1';
   var FETCH_QUERY = 'newer_than:30d -category:promotions -in:chats';
   var MAX_MESSAGES = 25;
@@ -233,9 +235,9 @@
     return getToken()
       .then(fetchProfileEmail)
       .then(function (email) {
-        writeState({ email: email || 'Gmail', connectedAt: Date.now() });
+        writeState({ email: email || 'Google', connectedAt: Date.now() });
         render();
-        toast('Gmail connected' + (email ? ' — ' + email : ''));
+        toast('Google account connected' + (email ? ' — ' + email : ''));
       })
       .catch(function (err) {
         toast(connectErrorMessage(err));
@@ -250,7 +252,7 @@
     }
     writeState(null);
     render();
-    toast('Gmail disconnected');
+    toast('Google account disconnected');
   }
 
   function sync(source, btn) {
@@ -280,11 +282,97 @@
       });
   }
 
+  /* ---- Google Calendar -------------------------------------------------- */
+
+  function calGet(path) {
+    return getToken().then(function (tok) {
+      return fetch('https://www.googleapis.com/calendar/v3' + path, {
+        headers: { Authorization: 'Bearer ' + tok }
+      }).then(function (r) {
+        if (!r.ok) throw new Error('cal-' + r.status);
+        return r.json();
+      });
+    });
+  }
+
+  var WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  var MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  function formatDay(d) {
+    var now = new Date();
+    var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var that = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    var diff = Math.round((that - today) / 86400000);
+    var base = WEEKDAYS[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS_SHORT[d.getMonth()];
+    if (diff === 0) return 'Today · ' + base;
+    if (diff === 1) return 'Tomorrow · ' + base;
+    return base + (d.getFullYear() !== now.getFullYear() ? ' ' + d.getFullYear() : '');
+  }
+
+  function formatTime(d) {
+    var h = d.getHours();
+    var m = d.getMinutes();
+    var ap = h >= 12 ? 'PM' : 'AM';
+    h = h % 12;
+    if (h === 0) h = 12;
+    return h + ':' + (m < 10 ? '0' + m : m) + ' ' + ap;
+  }
+
+  function mapEvent(ev) {
+    var start = ev.start || {};
+    var raw = start.dateTime || start.date;
+    var d = raw ? new Date(raw) : null;
+    var allDay = !start.dateTime;
+    return {
+      day: d ? formatDay(d) : 'Upcoming',
+      time: allDay ? 'All day' : formatTime(d),
+      title: ev.summary || '(untitled event)',
+      location: ev.location || ''
+    };
+  }
+
+  function syncCalendar(btn) {
+    if (!readState()) {
+      toast('Connect your Google account in Profile to sync.');
+      return Promise.reject(new Error('not-connected'));
+    }
+    if (btn) btn.setAttribute('aria-busy', 'true');
+    var params =
+      '?timeMin=' + encodeURIComponent(new Date().toISOString()) +
+      '&maxResults=25&singleEvents=true&orderBy=startTime';
+    return calGet('/calendars/primary/events' + params)
+      .then(function (data) {
+        var events = (data.items || []).map(mapEvent);
+        if (window.GraphenePA.setSchedule) window.GraphenePA.setSchedule(events);
+        toast('Synced ' + events.length + ' event' + (events.length === 1 ? '' : 's') + ' from your calendar.');
+        return events;
+      })
+      .catch(function (err) {
+        toast('Couldn’t sync calendar — ' + calError(err));
+        throw err;
+      })
+      .then(function (r) {
+        if (btn) btn.removeAttribute('aria-busy');
+        return r;
+      }, function (e) {
+        if (btn) btn.removeAttribute('aria-busy');
+        throw e;
+      });
+  }
+
+  function calError(err) {
+    var code = err && err.message ? err.message : 'error';
+    if (/^cal-401/.test(code)) return 'sign-in expired — reconnect in Profile.';
+    if (/^cal-403/.test(code)) return 'grant Calendar access (reconnect) or enable the Calendar API.';
+    if (/^cal-/.test(code)) return 'Calendar returned an error.';
+    return 'please try again.';
+  }
+
   function connectErrorMessage(err) {
     var code = err && err.message;
     if (code === 'gis-unavailable') return 'Google sign-in didn’t load — check your connection.';
-    if (code === 'not-configured') return 'Gmail needs a Google OAuth client ID — see setup.';
-    return 'Couldn’t connect Gmail — please try again.';
+    if (code === 'not-configured') return 'This needs a Google OAuth client ID — see setup.';
+    return 'Couldn’t connect — please try again.';
   }
 
   function shortError(err) {
@@ -307,10 +395,10 @@
     var st = readState();
     if (st) {
       status.textContent = st.email || 'Connected';
-      label.textContent = 'Disconnect Gmail';
+      label.textContent = 'Disconnect Google';
     } else {
       status.textContent = isConfigured() ? 'Not connected' : 'Setup required';
-      label.textContent = 'Connect Gmail';
+      label.textContent = 'Connect Google';
     }
   }
 
@@ -332,9 +420,11 @@
     connect: connect,
     disconnect: disconnect,
     sync: sync,
+    syncCalendar: syncCalendar,
     state: readState,
     isConfigured: isConfigured,
-    parseMessages: parseMessages // pure — unit-testable
+    parseMessages: parseMessages, // pure — unit-testable
+    mapEvent: mapEvent            // pure — unit-testable
   };
 
   if (document.readyState === 'loading') {
