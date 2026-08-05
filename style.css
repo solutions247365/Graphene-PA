@@ -355,6 +355,147 @@ svg {
   border-radius: var(--radius-sm);
 }
 
+/* ---- floating menu rail -----------------------------------------------------
+   A detached vertical bar that floats over the chat view against the left
+   edge, clear of the header and composer. Icon-only to keep the app visible
+   behind it; each button reveals its label as a tooltip on hover/focus.
+   ---------------------------------------------------------------------------- */
+
+.rail {
+  position: absolute;
+  left: calc(var(--space-3) + var(--safe-left));
+  top: 50%;
+  z-index: 10;
+  padding: var(--space-2);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  background: color-mix(in srgb, var(--color-surface) 82%, transparent);
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  box-shadow: var(--shadow-md);
+  transform: translate(-130%, -50%);
+  opacity: 0;
+  transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+  will-change: transform;
+}
+
+.rail[hidden] {
+  display: none;
+}
+
+.rail[data-open] {
+  transform: translate(0, -50%);
+  opacity: 1;
+}
+
+.rail-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+}
+
+.rail-sep {
+  height: 1px;
+  margin: var(--space-1) var(--space-2);
+  background: var(--color-border);
+}
+
+/* Buttons slide in behind the rail itself, one after the next. */
+.rail[data-open] .rail-item {
+  animation: rail-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.rail[data-open] .rail-item:nth-child(1) { animation-delay: 0.06s; }
+.rail[data-open] .rail-item:nth-child(2) { animation-delay: 0.10s; }
+.rail[data-open] .rail-item:nth-child(3) { animation-delay: 0.14s; }
+.rail[data-open] .rail-item:nth-child(4) { animation-delay: 0.18s; }
+.rail[data-open] .rail-item:nth-child(6) { animation-delay: 0.22s; }
+
+@keyframes rail-in {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+}
+
+.rail-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  color: var(--color-text-muted);
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.rail-btn:hover,
+.rail-btn:focus-visible {
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+}
+
+.rail-btn:active {
+  transform: scale(0.92);
+}
+
+.rail-btn:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.rail-btn.is-active {
+  background: color-mix(in srgb, var(--color-accent) 16%, transparent);
+  color: var(--color-accent);
+}
+
+/* Accent marker on the active item, hugging the rail's inner edge. */
+.rail-btn.is-active::before {
+  content: "";
+  position: absolute;
+  left: -5px;
+  top: 50%;
+  width: 3px;
+  height: 18px;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  transform: translateY(-50%);
+}
+
+/* ---- rail tooltips ----------------------------------------------------------
+   The label doubles as the accessible name, so it stays in the DOM and is
+   positioned off to the right rather than hidden.
+   ---------------------------------------------------------------------------- */
+
+.rail-label {
+  position: absolute;
+  left: calc(100% + var(--space-3));
+  top: 50%;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+  color: var(--color-text);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-6px, -50%);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.rail-btn:hover .rail-label,
+.rail-btn:focus-visible .rail-label {
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+
 /* ---- scrollbar (desktop browser testing) ---------------------------------- */
 
 .view::-webkit-scrollbar {
@@ -393,5 +534,7 @@ svg {
 @media (prefers-reduced-motion: reduce) {
   * {
     transition-duration: 0.001ms !important;
+    animation-duration: 0.001ms !important;
+    animation-delay: 0s !important;
   }
 }
