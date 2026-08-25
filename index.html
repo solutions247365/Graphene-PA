@@ -14,8 +14,9 @@
       <span class="brand-mark" aria-hidden="true"></span>
       <span class="brand-name">Graphene PA</span>
     </div>
-    <button class="icon-btn" type="button" aria-label="Settings">
-      <svg viewBox="0 0 24 24" width="20" height="20"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M19.4 13a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V19a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 13a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 6.6a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 2.6a1.7 1.7 0 0 0 1-1.55V1a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 8a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1Z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+    <button class="icon-btn" type="button" id="hub-trigger" aria-label="Menu"
+            aria-haspopup="menu" aria-expanded="false" aria-controls="hub">
+      <svg viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="12" r="8.4" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="2.6" fill="currentColor"/></svg>
     </button>
   </header>
 
@@ -69,6 +70,71 @@
     </button>
   </nav>
 
+  <!-- ---- radial hub menu --------------------------------------------------
+       Circular menu floating over the chat view. Items are placed around the
+       ring by the --angle on each .hub-item; the glow behind the ring rotates
+       to --active-angle so it always sits behind the current item.
+       -------------------------------------------------------------------- -->
+  <div class="hub" id="hub" role="menu" aria-label="Menu" hidden style="--active-angle: 0deg">
+
+    <span class="hub-glow" aria-hidden="true"></span>
+
+    <ul class="hub-ring">
+
+      <li class="hub-item" style="--angle: 0deg">
+        <button class="hub-btn is-active" type="button" role="menuitem" aria-current="page">
+          <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true"><path d="M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1v-8Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          <span class="hub-label">Home</span>
+        </button>
+      </li>
+
+      <li class="hub-item" style="--angle: 60deg">
+        <button class="hub-btn" type="button" role="menuitem">
+          <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true"><circle cx="11" cy="11" r="6.4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="m15.8 15.8 4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          <span class="hub-label">Search</span>
+        </button>
+      </li>
+
+      <li class="hub-item" style="--angle: 120deg">
+        <button class="hub-btn" type="button" role="menuitem">
+          <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true"><path d="m12 4.6 2.4 4.9 5.4.8-3.9 3.8.9 5.3-4.8-2.5-4.8 2.5.9-5.3L4.2 10.3l5.4-.8L12 4.6Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          <span class="hub-label">Favourites</span>
+        </button>
+      </li>
+
+      <li class="hub-item" style="--angle: 180deg">
+        <button class="hub-btn" type="button" role="menuitem">
+          <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true"><circle cx="12" cy="5.4" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="18.6" r="1.5" fill="currentColor"/></svg>
+          <span class="hub-label">More</span>
+        </button>
+      </li>
+
+      <li class="hub-item" style="--angle: 240deg">
+        <button class="hub-btn" type="button" role="menuitem">
+          <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true"><path d="M19.5 12a7.5 7.5 0 1 1-2.6-5.7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M19.6 3.6v3.9h-3.9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="hub-label">Refresh</span>
+        </button>
+      </li>
+
+      <li class="hub-item" style="--angle: 300deg">
+        <button class="hub-btn" type="button" role="menuitem">
+          <svg viewBox="0 0 24 24" width="21" height="21" aria-hidden="true"><path d="M20 12H4.6M10.4 6.2 4.6 12l5.8 5.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span class="hub-label">Back</span>
+        </button>
+      </li>
+
+    </ul>
+
+    <button class="hub-core" type="button" id="hub-core" role="menuitem">
+      <span class="hub-core-inner" aria-hidden="true">
+        <span class="hub-core-pill"></span>
+      </span>
+      <span class="hub-label hub-label-core">Ask</span>
+    </button>
+
+  </div>
+
 </div>
+<script src="app.js"></script>
 </body>
 </html>
