@@ -23,6 +23,16 @@
   --color-assistant-bubble: var(--color-surface-raised);
   --color-assistant-text: var(--color-text);
 
+  /* Radial hub — its own violet accent, kept separate from the app's teal. */
+  --color-hub: #23272b;
+  --color-hub-raised: #2c3135;
+  --color-hub-sunk: #191d20;
+  --color-hub-icon: #8d979e;
+  --color-hub-accent: #a855f7;
+  --color-hub-shade: rgba(0, 0, 0, 0.55);
+  --color-hub-cast: rgba(0, 0, 0, 0.5);
+  --color-hub-sheen: rgba(255, 255, 255, 0.05);
+
   --radius-sm: 8px;
   --radius-md: 14px;
   --radius-lg: 20px;
@@ -69,6 +79,15 @@
     --color-user-text: #ffffff;
     --color-assistant-bubble: var(--color-surface-raised);
     --color-assistant-text: var(--color-text);
+
+    --color-hub: #ffffff;
+    --color-hub-raised: #ffffff;
+    --color-hub-sunk: #e9ebed;
+    --color-hub-icon: #6b747a;
+    --color-hub-accent: #7c3aed;
+    --color-hub-shade: rgba(0, 0, 0, 0.09);
+    --color-hub-cast: rgba(0, 0, 0, 0.18);
+    --color-hub-sheen: rgba(255, 255, 255, 0.9);
   }
 }
 
@@ -355,145 +374,205 @@ svg {
   border-radius: var(--radius-sm);
 }
 
-/* ---- floating menu rail -----------------------------------------------------
-   A detached vertical bar that floats over the chat view against the left
-   edge, clear of the header and composer. Icon-only to keep the app visible
-   behind it; each button reveals its label as a tooltip on hover/focus.
+/* ---- radial hub menu --------------------------------------------------------
+   A circular menu that floats over the chat view. Each .hub-item carries an
+   --angle; the shared transform below walks out along that angle and then
+   counter-rotates so the icon itself stays upright. Changing --hub-radius
+   resizes the whole arrangement.
    ---------------------------------------------------------------------------- */
 
-.rail {
+.hub {
+  --hub-size: 216px;
+  --hub-radius: 80px;
+  --hub-core-size: 128px;
+
   position: absolute;
-  left: calc(var(--space-3) + var(--safe-left));
+  left: 50%;
   top: 50%;
+  width: var(--hub-size);
+  height: var(--hub-size);
   z-index: 10;
-  padding: var(--space-2);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border);
-  background: color-mix(in srgb, var(--color-surface) 82%, transparent);
-  backdrop-filter: blur(14px) saturate(1.3);
-  -webkit-backdrop-filter: blur(14px) saturate(1.3);
-  box-shadow: var(--shadow-md);
-  transform: translate(-130%, -50%);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 34%, var(--color-hub-raised), var(--color-hub) 72%);
+  box-shadow:
+    0 18px 50px var(--color-hub-cast),
+    inset 0 1px 0 var(--color-hub-sheen);
+  transform: translate(-50%, -50%) scale(0.86);
   opacity: 0;
-  transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+  transition: transform 0.36s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.22s ease;
   will-change: transform;
 }
 
-.rail[hidden] {
+.hub[hidden] {
   display: none;
 }
 
-.rail[data-open] {
-  transform: translate(0, -50%);
+.hub[data-open] {
+  transform: translate(-50%, -50%) scale(1);
   opacity: 1;
 }
 
-.rail-list {
+/* Bloom behind the ring. Rotating the whole gradient is what moves it around
+   the circle to sit behind whichever item is active. */
+.hub-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 50% 5%,
+    var(--color-hub-accent) 0%,
+    color-mix(in srgb, var(--color-hub-accent) 30%, transparent) 13%,
+    transparent 34%
+  );
+  opacity: 0;
+  filter: blur(8px);
+  transform: rotate(var(--active-angle, 0deg));
+  transition: transform 0.42s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.hub[data-open] .hub-glow {
+  opacity: 0.42;
+}
+
+/* ---- ring items ------------------------------------------------------------- */
+
+.hub-ring {
   list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
   margin: 0;
   padding: 0;
 }
 
-.rail-sep {
-  height: 1px;
-  margin: var(--space-1) var(--space-2);
-  background: var(--color-border);
+.hub-item {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: rotate(var(--angle)) translateY(calc(-1 * var(--hub-radius)))
+    rotate(calc(-1 * var(--angle)));
 }
 
-/* Buttons slide in behind the rail itself, one after the next. */
-.rail[data-open] .rail-item {
-  animation: rail-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) backwards;
-}
-
-.rail[data-open] .rail-item:nth-child(1) { animation-delay: 0.06s; }
-.rail[data-open] .rail-item:nth-child(2) { animation-delay: 0.10s; }
-.rail[data-open] .rail-item:nth-child(3) { animation-delay: 0.14s; }
-.rail[data-open] .rail-item:nth-child(4) { animation-delay: 0.18s; }
-.rail[data-open] .rail-item:nth-child(6) { animation-delay: 0.22s; }
-
-@keyframes rail-in {
-  from {
-    opacity: 0;
-    transform: translateX(-8px);
-  }
-}
-
-.rail-btn {
-  position: relative;
+.hub-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  border-radius: var(--radius-md);
-  color: var(--color-text-muted);
-  transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+  width: 40px;
+  height: 40px;
+  margin: -20px;
+  border-radius: 50%;
+  color: var(--color-hub-icon);
+  transition: color 0.18s ease, background-color 0.18s ease, transform 0.12s ease;
 }
 
-.rail-btn:hover,
-.rail-btn:focus-visible {
-  background: var(--color-surface-raised);
+.hub-btn:hover,
+.hub-btn:focus-visible {
   color: var(--color-text);
+  background: color-mix(in srgb, var(--color-hub-accent) 16%, transparent);
 }
 
-.rail-btn:active {
-  transform: scale(0.92);
+.hub-btn:active {
+  transform: scale(0.9);
 }
 
-.rail-btn:focus-visible {
-  outline: 2px solid var(--color-accent);
+.hub-btn:focus-visible {
+  outline: 2px solid var(--color-hub-accent);
   outline-offset: 2px;
 }
 
-.rail-btn.is-active {
-  background: color-mix(in srgb, var(--color-accent) 16%, transparent);
-  color: var(--color-accent);
+.hub-btn.is-active {
+  color: var(--color-text);
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--color-hub-accent) 70%, transparent));
 }
 
-/* Accent marker on the active item, hugging the rail's inner edge. */
-.rail-btn.is-active::before {
-  content: "";
-  position: absolute;
-  left: -5px;
-  top: 50%;
-  width: 3px;
-  height: 18px;
-  border-radius: var(--radius-pill);
-  background: var(--color-accent);
-  transform: translateY(-50%);
+/* Items fade in from the centre outwards, staggered clockwise from the top. */
+.hub[data-open] .hub-item {
+  animation: hub-item-in 0.34s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
-/* ---- rail tooltips ----------------------------------------------------------
-   The label doubles as the accessible name, so it stays in the DOM and is
-   positioned off to the right rather than hidden.
+.hub[data-open] .hub-item:nth-child(1) { animation-delay: 0.08s; }
+.hub[data-open] .hub-item:nth-child(2) { animation-delay: 0.12s; }
+.hub[data-open] .hub-item:nth-child(3) { animation-delay: 0.16s; }
+.hub[data-open] .hub-item:nth-child(4) { animation-delay: 0.20s; }
+.hub[data-open] .hub-item:nth-child(5) { animation-delay: 0.24s; }
+.hub[data-open] .hub-item:nth-child(6) { animation-delay: 0.28s; }
+
+@keyframes hub-item-in {
+  from {
+    opacity: 0;
+    transform: rotate(var(--angle)) translateY(calc(-1 * var(--hub-radius) * 0.55))
+      rotate(calc(-1 * var(--angle)));
+  }
+}
+
+/* ---- core ------------------------------------------------------------------
+   Concentric rings at the centre: an accent hairline ring, a recessed disc,
+   and the pill indicator.
    ---------------------------------------------------------------------------- */
 
-.rail-label {
+.hub-core {
   position: absolute;
-  left: calc(100% + var(--space-3));
+  left: 50%;
   top: 50%;
-  padding: 5px 10px;
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
-  box-shadow: var(--shadow-sm);
-  color: var(--color-text);
-  font-size: 12px;
-  font-weight: 500;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  transform: translate(-6px, -50%);
-  transition: opacity 0.15s ease, transform 0.15s ease;
+  width: var(--hub-core-size);
+  height: var(--hub-core-size);
+  margin: calc(var(--hub-core-size) / -2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--color-hub-accent) 42%, transparent);
+  background: var(--color-hub);
+  box-shadow:
+    0 0 18px color-mix(in srgb, var(--color-hub-accent) 22%, transparent),
+    inset 0 0 22px var(--color-hub-shade);
+  transition: box-shadow 0.2s ease, transform 0.12s ease;
 }
 
-.rail-btn:hover .rail-label,
-.rail-btn:focus-visible .rail-label {
-  opacity: 1;
-  transform: translate(0, -50%);
+.hub-core:hover,
+.hub-core:focus-visible {
+  box-shadow:
+    0 0 26px color-mix(in srgb, var(--color-hub-accent) 38%, transparent),
+    inset 0 0 22px var(--color-hub-shade);
+}
+
+.hub-core:active {
+  transform: scale(0.97);
+}
+
+.hub-core:focus-visible {
+  outline: 2px solid var(--color-hub-accent);
+  outline-offset: 3px;
+}
+
+.hub-core-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--hub-core-size) - 26px);
+  height: calc(var(--hub-core-size) - 26px);
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 42%, var(--color-hub-raised), var(--color-hub-sunk));
+}
+
+.hub-core-pill {
+  width: 5px;
+  height: 15px;
+  border-radius: var(--radius-pill);
+  background: var(--color-hub-accent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--color-hub-accent) 85%, transparent);
+}
+
+/* Labels carry each button's accessible name; the design itself is icon-only. */
+.hub-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* ---- scrollbar (desktop browser testing) ---------------------------------- */
@@ -534,7 +613,5 @@ svg {
 @media (prefers-reduced-motion: reduce) {
   * {
     transition-duration: 0.001ms !important;
-    animation-duration: 0.001ms !important;
-    animation-delay: 0s !important;
   }
 }
